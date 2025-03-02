@@ -1,84 +1,81 @@
 name: Build and deploy to aliyun(web server)
 on:
-  push:
-    branches: [ "main" ]
+    push:
+        branches: ["main"]
 env:
-  CARGO_TERM_COLOR: always
+    CARGO_TERM_COLOR: always
 jobs:
-  build:
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v4
-    - name: Build
-      run: cargo build --verbose --release
-    - name: Run tests
-      run: cargo test --verbose
-    
-    # 添加构建产物上传步骤
-    - name: Upload build artifacts
-      uses: actions/upload-artifact@v2
-      with:
-        name: rust-server-release
-        path: |
-          target/release/your_server_binary_name
-          config/
-          static/
-          templates/
-          # 添加其他需要部署的文件或目录
+    build:
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v4
+            - name: Build
+              run: cargo build -p web_server --release
+            - name: Run tests
+              run: cargo test -p web_server
 
-  deploy:
-    name: Deploy to Aliyun Server
-    needs: build
-    runs-on: ubuntu-latest
-    steps:
-      # 下载构建产物
-      - name: Download build artifacts
-        uses: actions/download-artifact@v2
-        with:
-          name: rust-server-release
-          path: ./deploy-package
-      
-      # 准备部署包
-      - name: Prepare deployment package
-        run: |
-          chmod +x ./deploy-package/your_server_binary_name
-          # 创建一个简单的启动脚本
-          echo '#!/bin/bash' > ./deploy-package/start.sh
-          echo 'cd $(dirname $0)' >> ./deploy-package/start.sh
-          echo './your_server_binary_name > server.log 2>&1 &' >> ./deploy-package/start.sh
-          echo 'echo $! > server.pid' >> ./deploy-package/start.sh
-          
-          # 创建一个停止脚本
-          echo '#!/bin/bash' > ./deploy-package/stop.sh
-          echo 'if [ -f server.pid ]; then' >> ./deploy-package/stop.sh
-          echo '  kill $(cat server.pid) || true' >> ./deploy-package/stop.sh
-          echo '  rm server.pid' >> ./deploy-package/stop.sh
-          echo 'fi' >> ./deploy-package/stop.sh
-          
-          # 设置脚本权限
-          chmod +x ./deploy-package/start.sh ./deploy-package/stop.sh
-      
-      # 部署到阿里云服务器
-      - name: Deploy to Aliyun
-        uses: easingthemes/ssh-deploy@v2.1.1
-        env:
-          SSH_PRIVATE_KEY: ${{ secrets.ALIYUN_SSH_KEY }}
-          REMOTE_HOST: ${{ secrets.ALIYUN_HOST }}
-          REMOTE_USER: ${{ secrets.ALIYUN_USER }}
-          ARGS: "-avzr --delete"
-          SOURCE: "./deploy-package/"
-          TARGET: "/opt/rust-server/"
-      
-      # 重启服务
-      - name: Restart service
-        uses: appleboy/ssh-action@master
-        with:
-          host: ${{ secrets.ALIYUN_HOST }}
-          username: ${{ secrets.ALIYUN_USER }}
-          key: ${{ secrets.ALIYUN_SSH_KEY }}
-          script: |
-            cd /opt/rust-server/
-            ./stop.sh
-            sleep 2
-            ./start.sh
-            echo "Server restarted successfully!"
+            # 添加构建产物上传步骤
+            - name: Upload build artifacts
+              uses: actions/upload-artifact@v2
+              with:
+                  name: web-server-release
+                  path: |
+                      target/release/web_server
+                      conf/
+
+    deploy:
+        name: Deploy to Aliyun Server
+        needs: build
+        runs-on: ubuntu-latest
+        steps:
+            # 下载构建产物
+            - name: Download build artifacts
+              uses: actions/download-artifact@v2
+              with:
+                  name: rust-server-release
+                  path: ./deploy-package
+
+            # 准备部署包
+            - name: Prepare deployment package
+              run: |
+                  chmod +x ./deploy-package/web_server
+                  # 创建一个简单的启动脚本
+                  echo '#!/bin/bash' > ./deploy-package/start.sh
+                  echo 'cd $(dirname $0)' >> ./deploy-package/start.sh
+                  echo './your_server_binary_name > server.log 2>&1 &' >> ./deploy-package/start.sh
+                  echo 'echo $! > server.pid' >> ./deploy-package/start.sh
+
+                  # 创建一个停止脚本
+                  echo '#!/bin/bash' > ./deploy-package/stop.sh
+                  echo 'if [ -f server.pid ]; then' >> ./deploy-package/stop.sh
+                  echo '  kill $(cat server.pid) || true' >> ./deploy-package/stop.sh
+                  echo '  rm server.pid' >> ./deploy-package/stop.sh
+                  echo 'fi' >> ./deploy-package/stop.sh
+
+                  # 设置脚本权限
+                  chmod +x ./deploy-package/start.sh ./deploy-package/stop.sh
+
+            # 部署到阿里云服务器
+            - name: Deploy to Aliyun
+              uses: easingthemes/ssh-deploy@v2.1.1
+              env:
+                  SSH_PRIVATE_KEY: ${{ secrets.ALIYUN_SSH_KEY }}
+                  REMOTE_HOST: ${{ secrets.ALIYUN_HOST }}
+                  REMOTE_USER: ${{ secrets.ALIYUN_USER }}
+                  ARGS: "-avzr --delete"
+                  SOURCE: "./deploy-package/"
+                  TARGET: "/opt/rust-server/"
+
+            # 重启服务
+            - name: Restart service
+              uses: appleboy/ssh-action@master
+              with:
+                  host: ${{ secrets.ALIYUN_HOST }}
+                  username: ${{ secrets.ALIYUN_USER }}
+                  key: ${{ secrets.ALIYUN_SSH_KEY }}
+                  script: |
+                      cd /opt/rust-server/
+                      ./stop.sh
+                      sleep 2
+                      ./start.sh
+                      echo "Server restarted successfully!"

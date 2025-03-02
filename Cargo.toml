@@ -3,4 +3,18 @@ name = "data-mind"
 version = "0.1.0"
 edition = "2021"
 
+[workspace]
+members = [".", "web-server"]
+
+[workspace.dependencies]
+tokio = { version = "1.43.0", features = ["macros", "rt-multi-thread"] }
+clap = { version = "4.5.31", features = ["derive"] }
+serde = { version = "1.0.218", features = ["derive"] }
+poem = "3.1.7"
+config = "0.15.8"
+anyhow = "1.0.96"
+snafu = "0.8.5"
+
 [dependencies]
+poem.workspace = true
+tokio.workspace = true
