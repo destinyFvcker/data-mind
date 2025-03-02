@@ -15,7 +15,7 @@ jobs:
               run: cargo test -p web_server
             # 添加构建产物上传步骤 - 已更新到 v3
             - name: Upload build artifacts
-              uses: actions/upload-artifact@v3
+              uses: actions/upload-artifact@v4
               with:
                   name: web-server-release
                   path: |
@@ -28,7 +28,7 @@ jobs:
         steps:
             # 下载构建产物 - 已更新到 v3
             - name: Download build artifacts
-              uses: actions/download-artifact@v3
+              uses: actions/download-artifact@v4
               with:
                   name: web-server-release # 确保与上传时使用的名称一致
                   path: ./deploy-package
