@@ -46,7 +46,7 @@ jobs:
                   SSH_PRIVATE_KEY: ${{ secrets.ALIYUN_SSH_KEY }}
                   REMOTE_HOST: ${{ secrets.ALIYUN_HOST }}
                   REMOTE_USER: ${{ secrets.ALIYUN_USER }}
-                  ARGS: "-avzr --delete"
+                  ARGS: "-avzr --delete --mkpath"
                   SOURCE: "./deploy-package/"
                   TARGET: "/home/${{ secrets.ALIYUN_USER }}/projects/data-mind/web-server/"
             # 重启服务
