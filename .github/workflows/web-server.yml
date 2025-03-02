@@ -13,28 +13,25 @@ jobs:
               run: cargo build -p web_server --release
             - name: Run tests
               run: cargo test -p web_server
-
-            # 添加构建产物上传步骤
+            # 添加构建产物上传步骤 - 已更新到 v3
             - name: Upload build artifacts
-              uses: actions/upload-artifact@v2
+              uses: actions/upload-artifact@v3
               with:
                   name: web-server-release
                   path: |
                       target/release/web_server
                       conf/
-
     deploy:
         name: Deploy to Aliyun Server
         needs: build
         runs-on: ubuntu-latest
         steps:
-            # 下载构建产物
+            # 下载构建产物 - 已更新到 v3
             - name: Download build artifacts
-              uses: actions/download-artifact@v2
+              uses: actions/download-artifact@v3
               with:
-                  name: rust-server-release
+                  name: web-server-release # 确保与上传时使用的名称一致
                   path: ./deploy-package
-
             # 准备部署包
             - name: Prepare deployment package
               run: |
@@ -42,22 +39,19 @@ jobs:
                   # 创建一个简单的启动脚本
                   echo '#!/bin/bash' > ./deploy-package/start.sh
                   echo 'cd $(dirname $0)' >> ./deploy-package/start.sh
-                  echo './your_server_binary_name > server.log 2>&1 &' >> ./deploy-package/start.sh
+                  echo './web_server > server.log 2>&1 &' >> ./deploy-package/start.sh  # 修正二进制文件名
                   echo 'echo $! > server.pid' >> ./deploy-package/start.sh
-
                   # 创建一个停止脚本
                   echo '#!/bin/bash' > ./deploy-package/stop.sh
                   echo 'if [ -f server.pid ]; then' >> ./deploy-package/stop.sh
                   echo '  kill $(cat server.pid) || true' >> ./deploy-package/stop.sh
                   echo '  rm server.pid' >> ./deploy-package/stop.sh
                   echo 'fi' >> ./deploy-package/stop.sh
-
                   # 设置脚本权限
                   chmod +x ./deploy-package/start.sh ./deploy-package/stop.sh
-
-            # 部署到阿里云服务器
+            # 部署到阿里云服务器 - 考虑更新到更新版本
             - name: Deploy to Aliyun
-              uses: easingthemes/ssh-deploy@v2.1.1
+              uses: easingthemes/ssh-deploy@main # 更新到最新版本
               env:
                   SSH_PRIVATE_KEY: ${{ secrets.ALIYUN_SSH_KEY }}
                   REMOTE_HOST: ${{ secrets.ALIYUN_HOST }}
@@ -65,7 +59,6 @@ jobs:
                   ARGS: "-avzr --delete"
                   SOURCE: "./deploy-package/"
                   TARGET: "/opt/rust-server/"
-
             # 重启服务
             - name: Restart service
               uses: appleboy/ssh-action@master
