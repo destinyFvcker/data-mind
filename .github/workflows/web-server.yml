@@ -18,7 +18,6 @@ jobs:
                   mkdir -p deployment/conf
                   cp target/release/web_server deployment/
                   cp scripts/restart_web_server.sh deployment/
-                  chmod +x deployment/restart_web_server.sh
                   cp -r conf/* deployment/conf/ || echo "No configuration files found"
             - name: Upload build artifacts
               uses: actions/upload-artifact@v4
@@ -59,6 +58,7 @@ jobs:
                   script: |
                       cd ${{ env.DEPLOY_PATH }}
                       chmod +x ./restart_web_server.sh
+                      chmod +x ./web_server
                       ./restart_web_server.sh
                       # 检查退出状态
                       if [ $? -eq 0 ]; then
