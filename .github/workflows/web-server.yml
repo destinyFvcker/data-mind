@@ -4,6 +4,7 @@ on:
         branches: ["main"]
 env:
     CARGO_TERM_COLOR: always
+    DEPLOY_PATH: "/home/${{ secrets.ALIYUN_USER }}/projects/data-mind/web-server/"
 jobs:
     build:
         runs-on: ubuntu-latest
@@ -48,16 +49,22 @@ jobs:
                   REMOTE_USER: ${{ secrets.ALIYUN_USER }}
                   ARGS: "-avzr --delete --mkpath"
                   SOURCE: "./deploy-package/"
-                  TARGET: "/home/${{ secrets.ALIYUN_USER }}/projects/data-mind/web-server/"
+                  TARGET: ${{ env.DEPLOY_PATH }}
             # 重启服务
-            # - name: Restart service
-            #   uses: appleboy/ssh-action@master
-            #   with:
-            #       host: ${{ secrets.ALIYUN_HOST }}
-            #       username: ${{ secrets.ALIYUN_USER }}
-            #       key: ${{ secrets.ALIYUN_SSH_KEY }}
-            #       script: |
-            #           cd /opt/rust-server/
-            #           export SHOME="/opt/rust-server"
-            #           ./restart_web_server.sh
-            #           echo "服务已使用restart_web_server.sh成功重启！"
+            - name: Restart service using SSH Remote Commands
+              uses: appleboy/ssh-action@v1.2.1
+              with:
+                  host: ${{ secrets.ALIYUN_HOST }}
+                  username: ${{ secrets.ALIYUN_USER }}
+                  key: ${{ secrets.ALIYUN_SSH_KEY }}
+                  # 设置环境变量并执行脚本
+                  script: |
+                      cd ${{ env.DEPLOY_PATH }}
+                      ./restart_web_server.sh
+                      # 检查退出状态
+                      if [ $? -eq 0 ]; then
+                          echo "✅ 服务已成功使用restart_web_server.sh重启！"
+                      else
+                          echo "❌ 服务重启失败，请检查日志！"
+                          exit 1
+                      fi

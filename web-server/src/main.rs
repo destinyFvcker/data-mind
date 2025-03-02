@@ -34,6 +34,7 @@ async fn main() -> anyhow::Result<()> {
         .try_init()
         .expect("logger build or set failed");
 
+    ftlog::info!("Data Mind web server stated!");
     Server::new(TcpListener::bind(format!("0.0.0.0:{}", CONFIG.server.port)))
         .run(get_app())
         .await?;

@@ -6,7 +6,7 @@ RED='\033[0;31m'
 NC='\033[0m' # 无颜色
 
 # 定义应用程序路径
-APP_DIR="$SHOME/projects/data-mind/web-server"
+APP_DIR="$HOME/projects/data-mind/web-server"
 BINARY_PATH="$APP_DIR/web_server"
 CONF_PATH="$APP_DIR/conf/web_server.toml"
 PID_FILE="$APP_DIR/server.pid"
