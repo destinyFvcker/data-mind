@@ -14,6 +14,8 @@ poem = "3.1.7"
 config = "0.15.8"
 anyhow = "1.0.96"
 snafu = "0.8.5"
+ftlog = "0.2.14"
+time = "0.3.37"
 
 [dependencies]
 poem.workspace = true

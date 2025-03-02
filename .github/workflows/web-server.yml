@@ -17,6 +17,7 @@ jobs:
                   mkdir -p deployment/conf
                   cp target/release/web_server deployment/
                   cp scripts/restart_web_server.sh deployment/
+                  chmod +x deployment/restart_web_server.sh
                   cp -r conf/* deployment/conf/ || echo "No configuration files found"
             - name: Upload build artifacts
               uses: actions/upload-artifact@v4
@@ -29,50 +30,34 @@ jobs:
         name: Deploy to Aliyun Server
         needs: build
         runs-on: ubuntu-latest
+        env:
+            DEPLOY_PATH: "/opt/rust-server/"
         steps:
-            # 下载构建产物 - 已更新到 v3
+            # 下载构建产物
             - name: Download build artifacts
               uses: actions/download-artifact@v4
               with:
-                  name: web-server-release # 确保与上传时使用的名称一致
+                  name: web-server-release
                   path: ./deploy-package
-            # 准备部署包
-            - name: Prepare deployment package
-              run: |
-                  chmod +x ./deploy-package/web_server
-                  # 创建一个简单的启动脚本
-                  echo '#!/bin/bash' > ./deploy-package/start.sh
-                  echo 'cd $(dirname $0)' >> ./deploy-package/start.sh
-                  echo './web_server > server.log 2>&1 &' >> ./deploy-package/start.sh  # 修正二进制文件名
-                  echo 'echo $! > server.pid' >> ./deploy-package/start.sh
-                  # 创建一个停止脚本
-                  echo '#!/bin/bash' > ./deploy-package/stop.sh
-                  echo 'if [ -f server.pid ]; then' >> ./deploy-package/stop.sh
-                  echo '  kill $(cat server.pid) || true' >> ./deploy-package/stop.sh
-                  echo '  rm server.pid' >> ./deploy-package/stop.sh
-                  echo 'fi' >> ./deploy-package/stop.sh
-                  # 设置脚本权限
-                  chmod +x ./deploy-package/start.sh ./deploy-package/stop.sh
-            # 部署到阿里云服务器 - 考虑更新到更新版本
+            # 部署到阿里云服务器
             - name: Deploy to Aliyun
-              uses: easingthemes/ssh-deploy@main # 更新到最新版本
+              uses: easingthemes/ssh-deploy@main
               env:
                   SSH_PRIVATE_KEY: ${{ secrets.ALIYUN_SSH_KEY }}
                   REMOTE_HOST: ${{ secrets.ALIYUN_HOST }}
                   REMOTE_USER: ${{ secrets.ALIYUN_USER }}
                   ARGS: "-avzr --delete"
                   SOURCE: "./deploy-package/"
-                  TARGET: "/opt/rust-server/"
+                  TARGET: "/home/${{ secrets.ALIYUN_USER }}/projects/data-mind/web-server/"
             # 重启服务
-            - name: Restart service
-              uses: appleboy/ssh-action@master
-              with:
-                  host: ${{ secrets.ALIYUN_HOST }}
-                  username: ${{ secrets.ALIYUN_USER }}
-                  key: ${{ secrets.ALIYUN_SSH_KEY }}
-                  script: |
-                      cd /opt/rust-server/
-                      ./stop.sh
-                      sleep 2
-                      ./start.sh
-                      echo "Server restarted successfully!"
+            # - name: Restart service
+            #   uses: appleboy/ssh-action@master
+            #   with:
+            #       host: ${{ secrets.ALIYUN_HOST }}
+            #       username: ${{ secrets.ALIYUN_USER }}
+            #       key: ${{ secrets.ALIYUN_SSH_KEY }}
+            #       script: |
+            #           cd /opt/rust-server/
+            #           export SHOME="/opt/rust-server"
+            #           ./restart_web_server.sh
+            #           echo "服务已使用restart_web_server.sh成功重启！"
