@@ -1,18 +1,11 @@
 use config::CONFIG;
 use ftlog::appender::{FileAppender, Period};
+use handler::get_app;
 use poem::{get, handler, listener::TcpListener, Route, Server};
 use time::Duration;
 
 mod config;
-
-#[handler]
-async fn hello_world() -> String {
-    "Hello! there is datamind!".to_string()
-}
-
-fn get_app() -> Route {
-    Route::new().nest("/api", Route::new().at("/test", get(hello_world)))
-}
+mod handler;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {

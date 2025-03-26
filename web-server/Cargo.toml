@@ -5,7 +5,6 @@ edition = "2021"
 
 [dependencies]
 tokio.workspace = true
-poem.workspace = true
 config.workspace = true
 serde.workspace = true
 clap.workspace = true
@@ -13,3 +12,4 @@ anyhow.workspace = true
 snafu.workspace = true
 ftlog.workspace = true
 time.workspace = true
+poem = { workspace = true, features = ["static-files"] }

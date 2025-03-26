@@ -19,6 +19,7 @@ struct Args {
 #[derive(Debug, Deserialize)]
 pub struct Server {
     pub port: u32,
+    pub fe: String,
 }
 
 #[derive(Debug, Deserialize)]
