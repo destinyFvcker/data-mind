@@ -10,8 +10,8 @@ pub const PATH_NAME: &'static str = "/scheduler";
 pub fn scheduler_api() -> Route {
     Route::new()
         // 同时处理数据库和内存调度器api
-        .at(
-            "PATH_NAME",
+        .nest_no_strip(
+            PATH_NAME,
             RouteMethod::new().get(schedule_inspect_api), // 获取现在所有正在运行的调度任务
         )
 }
