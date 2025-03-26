@@ -1,7 +1,7 @@
 use config::CONFIG;
 use ftlog::appender::{FileAppender, Period};
 use handler::get_app;
-use poem::{get, handler, listener::TcpListener, Route, Server};
+use poem::{listener::TcpListener, Server};
 use time::Duration;
 
 mod config;

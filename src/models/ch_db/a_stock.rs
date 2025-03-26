@@ -1,4 +1,4 @@
-use chrono::{DateTime, FixedOffset, Offset, Utc};
+use chrono::{DateTime, Utc};
 use clickhouse::Row;
 use serde::{Deserialize, Serialize};
 

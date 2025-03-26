@@ -1,7 +1,6 @@
-name: Build and deploy to aliyun(web server)
+name: web server
 on:
-    push:
-        branches: ["main"]
+    workflow_dispatch:
 env:
     CARGO_TERM_COLOR: always
     DEPLOY_PATH: "/home/${{ secrets.ALIYUN_USER }}/projects/data-mind/web-server/"
