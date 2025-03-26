@@ -1,0 +1,19 @@
+[package]
+name = "coze_plugin"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+serde.workspace = true
+ftlog.workspace = true
+clickhouse.workspace = true
+anyhow.workspace = true
+tokio.workspace = true
+uuid.workspace = true
+chrono.workspace = true
+clap.workspace = true
+config.workspace = true
+poem.workspace = true
+time.workspace = true
+reqwest.workspace = true
+data_mind = { path = ".." }

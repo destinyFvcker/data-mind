@@ -1,0 +1,60 @@
+name: coze plugin
+on:
+    workflow_dispatch:
+env:
+    CARGO_TERM_COLOR: always
+    APP_NAME: coze_plugin
+    BASE_PATH: "/home/${{ secrets.ALIYUN_USER }}/projects/data-mind/"
+jobs:
+    build:
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v4
+            - name: Build
+              run: cargo build -p $APP_NAME -r
+            - name: create artifect
+              run: |
+                  mkdir -p deploy/conf
+                  cp target/release/${APP_NAME} deploy/
+                  cp scripts/restart_${APP_NAME}.sh deploy/
+                  cp conf/${APP_NAME}.toml deploy/conf/
+            - name: upload artifect
+              uses: actions/upload-artifact@v4
+              with:
+                  name: ${{ env.APP_NAME }}
+                  path: deploy/
+                  compression-level: 9
+                  retention-days: 5
+
+    deploy:
+        needs: build
+        runs-on: ubuntu-latest
+        steps:
+            - name: pre download build artifacts
+              uses: actions/download-artifact@v4
+              with:
+                  name: ${{ env.APP_NAME }}
+                  path: ./deploy
+            - name: prepare to aliyun
+              uses: easingthemes/ssh-deploy@main
+              env:
+                  SSH_PRIVATE_KEY: ${{ secrets.ALIYUN_SSH_KEY }}
+                  REMOTE_HOST: ${{ secrets.ALIYUN_HOST }}
+                  REMOTE_USER: ${{ secrets.ALIYUN_USER }}
+                  ARGS: "-avzr --delete --mkpath"
+                  SOURCE: "./deploy/"
+                  TARGET: ${{ env.BASE_PATH }}${{ env.APP_NAME }}/
+            - name: restart service
+              uses: appleboy/ssh-action@v1.2.1
+              with:
+                  host: ${{ secrets.ALIYUN_HOST }}
+                  username: ${{ secrets.ALIYUN_USER }}
+                  key: ${{ secrets.ALIYUN_SSH_KEY }}
+                  envs: BASE_PATH,APP_NAME
+                  # 设置环境变量并执行脚本
+                  script: |
+                      cd ${BASE_PATH}/${APP_NAME}
+                      mkdir ./logs
+                      chmod +x ./$APP_NAME
+                      chmod +x ./restart_${APP_NAME}.sh
+                      ./restart_${APP_NAME}.sh

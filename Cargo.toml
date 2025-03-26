@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [workspace]
-members = [".", "akshare-monitor", "web-server"]
+members = [".", "_akshare-monitor", "_coze-plugin", "_web-server"]
 
 [workspace.dependencies]
 tokio = { version = "1.43.0", features = [
