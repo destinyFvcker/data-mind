@@ -3,14 +3,19 @@
 mod manager;
 use std::sync::Arc;
 
+use linkme::distributed_slice;
 pub use manager::*;
 use serde::{Deserialize, Serialize};
+
+use crate::monitor_tasks;
 
 /// 当前调度任务管理器之中的所有调度任务类型
 #[derive(Debug, Deserialize, Serialize, Clone, Copy, PartialEq)]
 pub enum ScheduleTaskType {
     /// 调度器自省任务
     System,
+    /// A股数据监控任务
+    AStock,
     /// 所有类型
     All,
 }
@@ -19,6 +24,7 @@ impl ToString for ScheduleTaskType {
     fn to_string(&self) -> String {
         match self {
             Self::System => "System".to_owned(),
+            Self::AStock => "AStock".to_owned(),
             Self::All => "All".to_owned(),
         }
     }
@@ -29,7 +35,8 @@ pub async fn scheduler_start_up() -> anyhow::Result<()> {
     // 加入心跳检测任务和清除zombie task任务
     SCHEDULE_TASK_MANAGER.add_task(SchedHeartBeat).await;
     SCHEDULE_TASK_MANAGER.add_task(SchedWaitZombie).await;
-    ftlog::info!("heart beat added!");
+
+    monitor_tasks::start_up_monitor_tasks().await;
 
     let snap_shot = SCHEDULE_TASK_MANAGER.inspect(Some(ScheduleTaskType::All));
     let message = format!("当前调度器内部状态：{:#?}", snap_shot);
@@ -52,11 +59,14 @@ impl Schedulable for SchedHeartBeat {
         }
     }
 
-    fn execute(self: Arc<Self>) -> Box<dyn std::future::Future<Output = ()> + Send + 'static> {
+    fn execute(
+        self: Arc<Self>,
+    ) -> Box<dyn std::future::Future<Output = anyhow::Result<()>> + Send + 'static> {
         Box::new(async move {
             let snap_shot = SCHEDULE_TASK_MANAGER.inspect(Some(ScheduleTaskType::All));
             let message = format!("当前调度器内部状态：{:#?}", snap_shot);
             ftlog::info!("{}", message);
+            Ok(())
         })
     }
 }
@@ -75,9 +85,12 @@ impl Schedulable for SchedWaitZombie {
         }
     }
 
-    fn execute(self: Arc<Self>) -> Box<dyn std::future::Future<Output = ()> + Send + 'static> {
+    fn execute(
+        self: Arc<Self>,
+    ) -> Box<dyn std::future::Future<Output = anyhow::Result<()>> + Send + 'static> {
         Box::new(async move {
             SCHEDULE_TASK_MANAGER.wait_tasks();
+            Ok(())
         })
     }
 }

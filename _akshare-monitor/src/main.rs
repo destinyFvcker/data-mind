@@ -16,7 +16,6 @@ async fn main() -> anyhow::Result<()> {
         "[year]-[month]-[day] [hour]:[minute]:[second].[subsecond digits:6]",
     )
     .unwrap();
-    // TODO 这里应该做一下区分，就是测试分支和部署分支不使用同一个日志等级
     let _guard = ftlog::builder()
         .max_log_level(ftlog::LevelFilter::Info)
         .time_format(time_format)

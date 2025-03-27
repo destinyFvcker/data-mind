@@ -51,7 +51,7 @@ pub trait Schedulable: Sync + Send + 'static {
     /// 调度任务相关描述性字段
     fn gen_meta(&self) -> TaskMeta;
     /// 在一次调度之中做什么
-    fn execute(self: Arc<Self>) -> Box<dyn Future<Output = ()> + Send + 'static>;
+    fn execute(self: Arc<Self>) -> Box<dyn Future<Output = anyhow::Result<()>> + Send + 'static>;
     /// 是否取消当前的这个调度任务，返回`true`代表取消，默认永远不取消
     fn cancel_or_not(self: Arc<Self>) -> Box<dyn Future<Output = bool> + Send + 'static> {
         Box::new(async { false })
