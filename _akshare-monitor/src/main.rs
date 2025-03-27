@@ -30,6 +30,7 @@ async fn main() -> anyhow::Result<()> {
         .expect("logger build or set failed");
 
     perform_ddl(&CH_CLIENT).await;
+    scheduler::scheduler_start_up().await?;
 
     ftlog::info!("Data Mind akshare monitor stated!");
     Server::new(TcpListener::bind(format!("0.0.0.0:{}", CONFIG.server.port)))
