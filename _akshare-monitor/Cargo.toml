@@ -17,5 +17,5 @@ poem.workspace = true
 time.workspace = true
 reqwest.workspace = true
 cron = "0.15.0"
-data_mind = { path = ".." }
 linkme = "0.3.32"
+data_mind = { path = ".." }

@@ -1,5 +1,3 @@
-use poem::Route;
+mod a_stock;
 
-pub fn get_app() -> Route {
-    Route::new()
-}
+pub use a_stock::*;

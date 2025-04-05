@@ -1,5 +1,10 @@
 [package]
 name = "coze_plugin"
+authors = ["DeFv destinyfunk@163.com"]
+description = """
+'Design and Implementation of the Intelligent Customer Service System for the Quantitative Data Monitoring Platform' \
+(shot for data-mind) coze plugin backend
+"""
 version = "0.1.0"
 edition = "2024"
 
@@ -13,7 +18,10 @@ uuid.workspace = true
 chrono.workspace = true
 clap.workspace = true
 config.workspace = true
-poem.workspace = true
 time.workspace = true
 reqwest.workspace = true
+actix-web.workspace = true
+utoipa.workspace = true
+utoipa-actix-web.workspace = true
+utoipa-scalar.workspace = true
 data_mind = { path = ".." }
