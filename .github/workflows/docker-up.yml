@@ -46,13 +46,13 @@ jobs:
                       cd ${{ env.DEPLOY_PATH }}
                       pwd
 
-                      echo "GRAFANA_ADMIN_USER=${{ secrets.GRAFANA_ADMIN_USER }}" > .env
-                      echo "GRAFANA_ADMIN_PASSWORD=${{ secrets.GRAFANA_ADMIN_PASSWORD }}" > .env
-                      echo "MYSQL_ROOT_PASSWORD=${{ secrets.MYSQL_ROOT_PASSWORD }}" > .env
-                      echo "CLICKHOUSE_USER=${{ secrets.CLICKHOUSE_USER }}" > .env
-                      echo "CLICKHOUSE_PASSWORD=${{ secrets.CLICKHOUSE_PASSWORD }}" > .env
-                      echo "REDIS_PASSWORD=${{ secrets.REDIS_PASSWORD }}" > .env
+                      echo "GRAFANA_ADMIN_USER=${{ secrets.GRAFANA_ADMIN_USER }}" >.env
+                      echo "GRAFANA_ADMIN_PASSWORD=${{ secrets.GRAFANA_ADMIN_PASSWORD }}" >>.env
+                      echo "MYSQL_ROOT_PASSWORD=${{ secrets.MYSQL_ROOT_PASSWORD }}" >>.env
+                      echo "CLICKHOUSE_USER=${{ secrets.CLICKHOUSE_USER }}" >>.env
+                      echo "CLICKHOUSE_PASSWORD=${{ secrets.CLICKHOUSE_PASSWORD }}" >>.env
+                      echo "REDIS_PASSWORD=${{ secrets.REDIS_PASSWORD }}" >>.env
 
-                      sudo docker compose down && sudo docker compose up
+                      sudo docker compose down && sudo docker compose up -d
 
                       rm ./.env
