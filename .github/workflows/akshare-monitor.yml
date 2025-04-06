@@ -1,6 +1,11 @@
 name: akshare monitor
 on:
     workflow_dispatch:
+    pull_request:
+        types:
+            - closed
+        paths:
+            - _akshare-monitor/**
 env:
     CARGO_TERM_COLOR: always
     APP_NAME: akshare_monitor
