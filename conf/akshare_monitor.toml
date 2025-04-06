@@ -1,8 +1,10 @@
 [server]
 port = 18803
+# logdir = ? (in env)
 
 [clickhouse]
 host = "127.0.0.1"
 port = 8123
 database = "akshare"
-user = "akshare"
+# user = ? (in env)
+# password = ? (in env)

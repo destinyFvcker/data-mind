@@ -1,7 +1,7 @@
 use std::sync::LazyLock;
 
 use clap::Parser;
-use config::File;
+use config::{Environment, File};
 use serde::Deserialize;
 
 pub static CONFIG: LazyLock<Config> = LazyLock::new(|| Config::new().unwrap());
@@ -18,6 +18,7 @@ struct Args {
 #[derive(Debug, Deserialize)]
 pub struct Server {
     pub port: u32,
+    pub logdir: String,
 }
 
 #[derive(Debug, Deserialize)]
@@ -40,6 +41,16 @@ impl Config {
         let args = Args::parse();
         let s = config::Config::builder()
             .add_source(File::with_name(&args.config_path))
+            .add_source(
+                Environment::with_prefix("clickhouse")
+                    .keep_prefix(true)
+                    .separator("_"),
+            )
+            .add_source(
+                Environment::with_prefix("server")
+                    .keep_prefix(true)
+                    .separator("_"),
+            )
             .build()?;
 
         Ok(s.try_deserialize()?)

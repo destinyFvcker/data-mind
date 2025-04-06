@@ -54,6 +54,8 @@ jobs:
                   envs: BASE_PATH,APP_NAME
                   # 设置环境变量并执行脚本
                   script: |
+                      export CLICKHOUSE_USER="${{ secrets.WEB_SERVER_CH_USER }}"
+                      export CLICKHOUSE_PASSWORD="${{ secrets.AK_SHARE_READER_PASSWORD }}"
                       cd ${BASE_PATH}/${APP_NAME}
                       pwd
                       mkdir ./logs

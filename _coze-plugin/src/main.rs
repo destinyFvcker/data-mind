@@ -17,7 +17,7 @@ async fn main() -> anyhow::Result<()> {
         .time_format(time_format)
         .root(
             FileAppender::builder()
-                .path("./logs/server.log")
+                .path(format!("{}/server.log", CONFIG.server.logdir))
                 .rotate(Period::Day)
                 .expire(Duration::days(7))
                 .build(),
