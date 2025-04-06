@@ -51,15 +51,16 @@ jobs:
             # 重启服务
             - name: Restart service using SSH Remote Commands
               uses: appleboy/ssh-action@v1.2.1
+              env:
+                  CLICKHOUSE_USER: ${{ secrets.WEB_SERVER_CH_USER }}
+                  CLICKHOUSE_PASSWORD: ${{ secrets.AK_SHARE_READER_PASSWORD }}
               with:
                   host: ${{ secrets.ALIYUN_HOST }}
                   username: ${{ secrets.ALIYUN_USER }}
                   key: ${{ secrets.ALIYUN_SSH_KEY }}
+                  envs: BASE_PATH,APP_NAME,CLICKHOUSE_USER,CLICKHOUSE_PASSWORD
                   # 设置环境变量并执行脚本
                   script: |
-                      cd ${BASE_PATH}/${APP_NAME}
-                      pwd
-                      mkdir ./logs
                       chmod +x ./$APP_NAME
                       chmod +x ./restart_${APP_NAME}.sh
                       ./restart_${APP_NAME}.sh
