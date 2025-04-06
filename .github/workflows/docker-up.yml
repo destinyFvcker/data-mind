@@ -22,6 +22,7 @@ jobs:
     deploy:
         needs: package_up
         runs-on: ubuntu-latest
+        environment: Aliyun production
         steps:
             - uses: actions/download-artifact@v4
               with:
@@ -52,6 +53,6 @@ jobs:
                       echo "CLICKHOUSE_PASSWORD=${{ secrets.CLICKHOUSE_PASSWORD }}" > .env
                       echo "REDIS_PASSWORD=${{ secrets.REDIS_PASSWORD }}" > .env
 
-                      docker compose down && docker compose up
+                      sudo docker compose down && sudo docker compose up
 
                       rm ./.env

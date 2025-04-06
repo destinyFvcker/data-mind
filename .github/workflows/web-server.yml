@@ -30,6 +30,7 @@ jobs:
         name: Deploy to Aliyun Server
         needs: build
         runs-on: ubuntu-latest
+        environment: Aliyun production
         steps:
             # 下载构建产物
             - name: Download build artifacts
