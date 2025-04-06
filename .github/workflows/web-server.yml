@@ -1,6 +1,11 @@
 name: web server
 on:
     workflow_dispatch:
+    pull_request:
+        types:
+            - closed
+        paths:
+            - _web-server/**
 env:
     CARGO_TERM_COLOR: always
     APP_NAME: web_server
