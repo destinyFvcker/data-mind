@@ -4,7 +4,7 @@ AI-powered Data Middleware
 
 ## for local dev
 
-在使用`docker compose up`启动项目之前，(假如没有的话)请务必先在**项目根目录**下创建一个`.env`文件，并放入下面这些环境变量定义：
+在使用`docker compose up`启动项目相关基础设置之前，(假如没有的话)请务必先在**项目根目录**下创建一个`.env`文件，并放入下面这些环境变量定义：
 
 - `CLICKHOUSE_USER`: clickhouse root用户的用户名，一般为*default*
 - `CLICKHOUSE_PASSWORD`: clickhouse root用户密码
@@ -15,7 +15,7 @@ AI-powered Data Middleware
 
 并且在相关可执行文件启动时，将这些环境变量通过github action注入到对应的进程之中。
 
-本地测试时使用命令 `source ./.env && cargo run -r xxx` 即可。
+本地开发时可以使用`local_start_up.sh`来快速启动相关项目的本地测试版本。
 
 ## utils
 
