@@ -3,26 +3,27 @@ on:
     workflow_dispatch:
 env:
     CARGO_TERM_COLOR: always
-    DEPLOY_PATH: "/home/${{ secrets.ALIYUN_USER }}/projects/data-mind/web-server/"
+    APP_NAME: web_server
+    BASE_PATH: "/home/${{ secrets.ALIYUN_USER }}/projects/data-mind/"
 jobs:
     build:
         runs-on: ubuntu-latest
         steps:
             - uses: actions/checkout@v4
             - name: Build
-              run: cargo build -p web_server --release
+              run: cargo build -p $APP_NAME -r
             # 创建部署目录结构
             - name: Create deployment directory structure
               run: |
-                  mkdir -p deployment/conf
-                  cp target/release/web_server deployment/
-                  cp scripts/restart_web_server.sh deployment/
-                  cp -r conf/* deployment/conf/ || echo "No configuration files found"
+                  mkdir -p deploy/conf
+                  cp target/release/${APP_NAME} deploy/
+                  cp scripts/restart_${APP_NAME}.sh deploy/
+                  cp conf/${APP_NAME}.toml deploy/conf/ || echo "No configuration files found"
             - name: Upload build artifacts
               uses: actions/upload-artifact@v4
               with:
                   name: web-server-release
-                  path: deployment/
+                  path: deploy/
                   compression-level: 9
                   retention-days: 5
     deploy:
@@ -34,8 +35,8 @@ jobs:
             - name: Download build artifacts
               uses: actions/download-artifact@v4
               with:
-                  name: web-server-release
-                  path: ./deploy-package
+                  name: ${{ env.APP_NAME }}
+                  path: ./deploy
             # 部署到阿里云服务器
             - name: Deploy to Aliyun
               uses: easingthemes/ssh-deploy@main
@@ -44,8 +45,8 @@ jobs:
                   REMOTE_HOST: ${{ secrets.ALIYUN_HOST }}
                   REMOTE_USER: ${{ secrets.ALIYUN_USER }}
                   ARGS: "-avzr --delete --mkpath"
-                  SOURCE: "./deploy-package/"
-                  TARGET: ${{ env.DEPLOY_PATH }}
+                  SOURCE: "./deploy/"
+                  TARGET: ${{ env.DEPLOY_BASE }}${{ env.APP_NAME }}/
             # 重启服务
             - name: Restart service using SSH Remote Commands
               uses: appleboy/ssh-action@v1.2.1
@@ -55,14 +56,9 @@ jobs:
                   key: ${{ secrets.ALIYUN_SSH_KEY }}
                   # 设置环境变量并执行脚本
                   script: |
-                      cd ${{ env.DEPLOY_PATH }}
-                      chmod +x ./restart_web_server.sh
-                      chmod +x ./web_server
-                      ./restart_web_server.sh
-                      # 检查退出状态
-                      if [ $? -eq 0 ]; then
-                          echo "✅ 服务已成功使用restart_web_server.sh重启！"
-                      else
-                          echo "❌ 服务重启失败，请检查日志！"
-                          exit 1
-                      fi
+                      cd ${BASE_PATH}/${APP_NAME}
+                      pwd
+                      mkdir ./logs
+                      chmod +x ./$APP_NAME
+                      chmod +x ./restart_${APP_NAME}.sh
+                      ./restart_${APP_NAME}.sh

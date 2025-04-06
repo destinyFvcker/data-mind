@@ -1,0 +1,57 @@
+name: docker compose up infrastructures
+on:
+    workflow_dispatch:
+env:
+    DEPLOY_PATH: "/home/${{ secrets.ALIYUN_USER }}/projects/data-mind/"
+jobs:
+    package_up:
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v4
+            - run: |
+                  mkdir -p deployment/docker
+                  cp -R docker/ deployment/docker/
+                  cp compose.yml deployment/
+            - uses: actions/upload-artifact@v4
+              with:
+                  name: web-server-release
+                  path: deployment/
+                  compression-level: 9
+                  retention-days: 5
+
+    deploy:
+        needs: package_up
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/download-artifact@v4
+              with:
+                  name: web-server-release
+                  path: ./deploy-package
+            - uses: easingthemes/ssh-deploy@main
+              env:
+                  SSH_PRIVATE_KEY: ${{ secrets.ALIYUN_SSH_KEY }}
+                  REMOTE_HOST: ${{ secrets.ALIYUN_HOST }}
+                  REMOTE_USER: ${{ secrets.ALIYUN_USER }}
+                  ARGS: "-avzr --delete --mkpath"
+                  SOURCE: "./deploy-package/"
+                  TARGET: ${{ env.DEPLOY_PATH }}
+            - uses: appleboy/ssh-action@v1.2.1
+              with:
+                  host: ${{ secrets.ALIYUN_HOST }}
+                  username: ${{ secrets.ALIYUN_USER }}
+                  key: ${{ secrets.ALIYUN_SSH_KEY }}
+                  # 设置环境变量并执行脚本
+                  script: |
+                      cd ${{ env.DEPLOY_PATH }}
+                      pwd
+
+                      echo "GRAFANA_ADMIN_USER=${{ secrets.GRAFANA_ADMIN_USER }}"
+                      echo "GRAFANA_ADMIN_PASSWORD=${{ secrets.GRAFANA_ADMIN_PASSWORD }}"
+                      echo "MYSQL_ROOT_PASSWORD=${{ secrets.MYSQL_ROOT_PASSWORD }}" > .env
+                      echo "CLICKHOUSE_USER=${{ secrets.CLICKHOUSE_USER }}" > .env
+                      echo "CLICKHOUSE_PASSWORD=${{ secrets.CLICKHOUSE_PASSWORD }}" > .env
+                      echo "REDIS_PASSWORD=${{ secrets.REDIS_PASSWORD }}" > .env
+
+                      docker compose down && docker compose up
+
+                      rm ./.env

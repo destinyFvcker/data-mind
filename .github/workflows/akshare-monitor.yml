@@ -54,6 +54,7 @@ jobs:
                   # 设置环境变量并执行脚本
                   script: |
                       cd ${BASE_PATH}/${APP_NAME}
+                      pwd
                       mkdir ./logs
                       chmod +x ./$APP_NAME
                       chmod +x ./restart_${APP_NAME}.sh
