@@ -38,6 +38,11 @@ serde_repr = "0.1.20"
 strum = { version = "0.27.1", features = ["derive"] }
 futures = "0.3.31"
 backoff = "0.4.0"
+sqlx = { version = "0.8.3", features = [
+    "runtime-tokio",
+    "tls-native-tls",
+    "mysql",
+] }
 
 [dependencies]
 serde.workspace = true
@@ -47,3 +52,4 @@ chrono.workspace = true
 clickhouse.workspace = true
 strum.workspace = true
 futures.workspace = true
+sqlx.workspace = true
