@@ -37,3 +37,20 @@ GROUP BY
     table
 ORDER BY size DESC;
 ```
+
+查看有关单个表的元数据
+
+```sql
+SELECT
+    part_type,
+    path,
+    formatReadableQuantity(rows) AS rows,
+    formatReadableSize(data_uncompressed_bytes) AS data_uncompressed_bytes,
+    formatReadableSize(data_compressed_bytes) AS data_compressed_bytes,
+    formatReadableSize(primary_key_bytes_in_memory) AS primary_key_bytes_in_memory,
+    marks,
+    formatReadableSize(bytes_on_disk) AS bytes_on_disk
+FROM system.parts
+WHERE (table = 'your_table_name') AND (active = 1)
+FORMAT Vertical;
+```

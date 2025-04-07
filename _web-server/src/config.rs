@@ -1,10 +1,6 @@
-use std::sync::LazyLock;
-
 use clap::{command, Parser};
 use config::{Environment, File};
 use serde::Deserialize;
-
-pub static CONFIG: LazyLock<Config> = LazyLock::new(|| Config::new().unwrap());
 
 /// data-mind 网页服务器
 #[derive(Parser, Debug)]
@@ -16,24 +12,49 @@ struct Args {
 }
 
 #[derive(Debug, Deserialize)]
-pub struct Server {
+pub struct Config {
+    pub server: ServerConfig,
+    pub mysql: MysqlConfig,
+    pub clickhouse: ClickhouseConfig,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct ServerConfig {
     pub port: u16,
     pub fe: String,
     pub logdir: String,
 }
 
 #[derive(Debug, Deserialize)]
-pub struct Config {
-    pub server: Server,
+pub struct MysqlConfig {
+    pub host: String,
+    pub port: u16,
+    pub user: String,
+    pub password: String,
+    pub database: String,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct ClickhouseConfig {
+    pub host: String,
+    pub port: u16,
+    pub user: String,
+    pub password: String,
+    pub database: String,
 }
 
 impl Config {
-    fn new() -> anyhow::Result<Config> {
+    pub fn new() -> anyhow::Result<Config> {
         let args = Args::parse();
         let config = config::Config::builder()
             .add_source(File::with_name(&args.config_path))
             .add_source(
                 Environment::with_prefix("clickhouse")
+                    .keep_prefix(true)
+                    .separator("_"),
+            )
+            .add_source(
+                Environment::with_prefix("mysql")
                     .keep_prefix(true)
                     .separator("_"),
             )

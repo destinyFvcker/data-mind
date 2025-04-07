@@ -34,8 +34,14 @@ actix-web = "4.10.2"
 utoipa-actix-web = "0.1.2"
 utoipa-scalar = { version = "0.3.0", features = ["actix-web"] }
 utoipa = { version = "5.3.1", features = ["actix_extras"] }
+sqlx = { version = "0.8.3", features = [
+    "runtime-tokio",
+    "tls-native-tls",
+    "mysql",
+] }
 
 [dependencies]
 serde.workspace = true
 chrono.workspace = true
 clickhouse.workspace = true
+sqlx.workspace = true

@@ -18,8 +18,11 @@ snafu.workspace = true
 ftlog.workspace = true
 time.workspace = true
 actix-web.workspace = true
-actix-files = "0.6.6"
 utoipa.workspace = true
 utoipa-actix-web.workspace = true
 utoipa-scalar.workspace = true
+sqlx.workspace = true
+clickhouse.workspace = true
 data_mind = { path = ".." }
+actix-files = "0.6.6"
+jsonwebtoken = "9.3.1"

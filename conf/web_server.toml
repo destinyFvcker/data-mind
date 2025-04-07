@@ -1,3 +1,17 @@
 [server]
 port = 8800
 fe = "/home/destinyfvcker/projects/data-mind/fe"
+
+[clickhouse]
+host = "127.0.0.1"
+port = 8123
+# user = ? (in env)
+# password = ? (in env)
+database = "akshare"
+
+[mysql]
+host = "127.0.0.1"
+port = 3306
+# user = ? (in env)
+# password = ? (in env)
+database = "data_mind"
