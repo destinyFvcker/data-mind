@@ -23,6 +23,10 @@ utoipa-actix-web.workspace = true
 utoipa-scalar.workspace = true
 sqlx.workspace = true
 clickhouse.workspace = true
+dashmap.workspace = true
+rand.workspace = true
+futures.workspace = true
 data_mind = { path = ".." }
 actix-files = "0.6.6"
 jsonwebtoken = "9.3.1"
+base64 = "0.22.1"

@@ -43,6 +43,9 @@ sqlx = { version = "0.8.3", features = [
     "tls-native-tls",
     "mysql",
 ] }
+dashmap = "6.1.0"
+rand = "0.9.0"
+futures = "0.3.31"
 
 [dependencies]
 serde.workspace = true

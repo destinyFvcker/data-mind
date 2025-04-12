@@ -2,6 +2,8 @@
 
 # shellcheck disable=SC2046
 export $(grep -v '^#' .env | xargs)
+export RUST_BACKTRACE=1
+export LOCAL_DEV=1
 case "$1" in
 "web")
     export SERVER_LOGDIR="./logs/web-server"
