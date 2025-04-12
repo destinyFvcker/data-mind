@@ -46,7 +46,7 @@ CREATE TABLE IF NOT EXISTS astock_realtime_data
     is_suspended UInt8 MATERIALIZED (trading_status = 'SUSPENDED'),  -- 是否停牌，用于快速过滤
     is_active UInt8 MATERIALIZED (trading_status = 'ACTIVE')         -- 是否活跃交易，用于快速过滤
 )
-ENGINE = ReplacingMergeTree()
+ENGINE = MergeTree()
 PARTITION BY toYYYYMMDD(date)  -- 按年月分区
 ORDER BY (code, timestamp)   -- 复合排序键：先按股票代码，再按时间戳
 SETTINGS index_granularity = 8192;

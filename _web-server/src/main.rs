@@ -1,27 +1,32 @@
-use actix_web::{App, HttpServer};
+use actix_web::{web::Data, App, HttpServer};
 use ftlog::appender::{FileAppender, Period};
 use handler::*;
-use sqlx::mysql::MySqlPoolOptions;
-use std::{net::Ipv4Addr, sync::Arc};
+use std::{env, net::Ipv4Addr, sync::Arc, thread};
 use time::Duration;
 use utoipa::OpenApi;
 use utoipa_actix_web::AppExt;
 use utoipa_scalar::{Scalar, Servable};
 
-mod config;
+mod behind;
 mod handler;
+mod init;
+mod init_config;
+mod repository;
 mod schema;
 
-#[tokio::main]
+#[actix_web::main]
 async fn main() {
-    let app_config = Arc::new(config::Config::new().unwrap());
-    let time_format = time::format_description::parse_owned::<1>(
-        "[year]-[month]-[day] [hour]:[minute]:[second].[subsecond digits:6]",
-    )
-    .unwrap();
+    // 在这里先初始化配置数据结构，因为相关日志的文件系统位置也存在配置文件之中
+    let app_config = Arc::new(init_config::InitConfig::new().unwrap());
+
+    let local_dev = env::var("LOCAL_DEV").unwrap_or_default();
+
     let _guard = ftlog::builder()
-        .max_log_level(ftlog::LevelFilter::Info)
-        .time_format(time_format)
+        .max_log_level(if "1" == local_dev {
+            ftlog::LevelFilter::Debug
+        } else {
+            ftlog::LevelFilter::Info
+        })
         .root(
             FileAppender::builder()
                 .path(format!("{}/server.log", app_config.server.logdir))
@@ -32,33 +37,17 @@ async fn main() {
         .try_init()
         .expect("logger build or set failed");
 
-    let ch_client = clickhouse::Client::default()
-        .with_url(format!(
-            "http://{}:{}",
-            app_config.clickhouse.host, app_config.clickhouse.port
-        ))
-        .with_user(&app_config.clickhouse.user)
-        .with_password(&app_config.clickhouse.password)
-        .with_database(&app_config.clickhouse.database);
-
-    let pool = MySqlPoolOptions::new()
-        .connect(&format!(
-            "mysql://{}:{}@{}:{}/{}",
-            app_config.mysql.user,
-            app_config.mysql.password,
-            app_config.mysql.host,
-            app_config.mysql.port,
-            app_config.mysql.database
-        ))
-        .await
-        .unwrap();
-
-    data_mind::utils::perform_mysql_ddl(&pool, include_str!("../ddl/auth.sql")).await;
+    // ----------------------------------------- ⬇️ some init operation
+    // init db
+    let db_clietns = Arc::new(init::init_db(&app_config).await);
+    // init github_state refresh on main thread
+    let github_state = behind::github_state::GithubState::begin_processing();
 
     #[derive(OpenApi)]
     #[openapi(
         tags(
-            (name = user::API_TAG, description = user::API_DESC)
+            (name = user::API_TAG, description = user::API_DESC),
+            (name = auth::API_TAG, description = auth::API_DESC)
         )
     )]
     struct ApiDoc;
@@ -66,21 +55,31 @@ async fn main() {
     ftlog::info!("Data Mind web server stated!");
     let shared_config = app_config.clone();
     HttpServer::new(move || {
-        App::new()
+        let mut app = App::new()
             .into_utoipa_app()
             .openapi(ApiDoc::openapi())
+            .app_data(Data::from(db_clietns.clone()))
             .service(utoipa_actix_web::scope("/api").configure(handler::user::config()))
-            .openapi_service(|api| Scalar::with_url("/scalar-doc", api))
-            .into_app()
             .service(
+                utoipa_actix_web::scope("/auths")
+                    .configure(handler::auth::config(Data::from(github_state.clone()))),
+            )
+            .openapi_service(|api| Scalar::with_url("/scalar-doc", api))
+            .into_app();
+
+        app = if "1" == local_dev {
+            app
+        } else {
+            app.service(
                 actix_files::Files::new("/", &shared_config.server.fe).index_file("index.html"),
             )
+        };
+
+        app
     })
     .bind((Ipv4Addr::UNSPECIFIED, app_config.server.port))
     .unwrap()
     .run()
     .await
     .unwrap();
-
-    unreachable!()
 }
