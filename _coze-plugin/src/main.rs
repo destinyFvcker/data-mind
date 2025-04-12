@@ -6,7 +6,7 @@ mod ch;
 mod config;
 mod handler;
 
-#[tokio::main]
+#[actix_web::main]
 async fn main() -> anyhow::Result<()> {
     let time_format = time::format_description::parse_owned::<1>(
         "[year]-[month]-[day] [hour]:[minute]:[second].[subsecond digits:6]",

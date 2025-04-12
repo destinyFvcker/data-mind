@@ -12,7 +12,7 @@ struct Args {
 }
 
 #[derive(Debug, Deserialize)]
-pub struct Config {
+pub struct InitConfig {
     pub server: ServerConfig,
     pub mysql: MysqlConfig,
     pub clickhouse: ClickhouseConfig,
@@ -43,8 +43,8 @@ pub struct ClickhouseConfig {
     pub database: String,
 }
 
-impl Config {
-    pub fn new() -> anyhow::Result<Config> {
+impl InitConfig {
+    pub fn new() -> anyhow::Result<Self> {
         let args = Args::parse();
         let config = config::Config::builder()
             .add_source(File::with_name(&args.config_path))
@@ -64,7 +64,7 @@ impl Config {
                     .separator("_"),
             )
             .build()?
-            .try_deserialize::<Config>()?;
+            .try_deserialize::<Self>()?;
 
         Ok(config)
     }
