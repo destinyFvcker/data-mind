@@ -1,13 +1,13 @@
 use actix_web::{web::Data, App, HttpServer};
 use ftlog::appender::{FileAppender, Period};
 use handler::*;
-use std::{env, net::Ipv4Addr, sync::Arc, thread};
+use std::{env, net::Ipv4Addr, sync::Arc};
 use time::Duration;
 use utoipa::OpenApi;
 use utoipa_actix_web::AppExt;
 use utoipa_scalar::{Scalar, Servable};
 
-mod behind;
+mod background;
 mod handler;
 mod init;
 mod init_config;
@@ -41,12 +41,12 @@ async fn main() {
     // init db
     let db_clietns = Arc::new(init::init_db(&app_config).await);
     // init github_state refresh on main thread
-    let github_state = behind::github_state::GithubState::begin_processing();
+    let github_state = background::github_state::GithubStateCache::begin_processing();
+    // ----------------------------------------- done
 
     #[derive(OpenApi)]
     #[openapi(
         tags(
-            (name = user::API_TAG, description = user::API_DESC),
             (name = auth::API_TAG, description = auth::API_DESC)
         )
     )]
@@ -59,7 +59,7 @@ async fn main() {
             .into_utoipa_app()
             .openapi(ApiDoc::openapi())
             .app_data(Data::from(db_clietns.clone()))
-            .service(utoipa_actix_web::scope("/api").configure(handler::user::config()))
+            // .service(utoipa_actix_web::scope("/api").configure(handler::user::config()))
             .service(
                 utoipa_actix_web::scope("/auths")
                     .configure(handler::auth::config(Data::from(github_state.clone()))),
