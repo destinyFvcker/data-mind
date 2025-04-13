@@ -1,12 +1,16 @@
 //! json web token auth middleware
 
 use actix_web::{
-    dev::{Service, ServiceRequest, ServiceResponse, Transform},
-    HttpResponse,
+    dev::{self, Service, ServiceRequest, ServiceResponse, Transform},
+    http::{
+        header::{HeaderName, HeaderValue},
+        Method,
+    },
+    Error, HttpResponse, HttpResponseBuilder,
 };
 use futures::future::{self, LocalBoxFuture, Ready};
 use serde::{Deserialize, Serialize};
-use utoipa::ToSchema;
+use utoipa::{openapi::Response, ToSchema};
 
 /// Todo endpoint error responses
 #[derive(Serialize, Deserialize, Clone, ToSchema)]
@@ -27,11 +31,7 @@ struct RequireApiKey;
 
 impl<S> Transform<S, ServiceRequest> for RequireApiKey
 where
-    S: Service<
-        ServiceRequest,
-        Response = ServiceResponse<actix_web::body::BoxBody>,
-        Error = actix_web::Error,
-    >,
+    S: Service<ServiceRequest, Response = ServiceResponse, Error = actix_web::Error>,
     S::Future: 'static,
 {
     type Response = ServiceResponse<actix_web::body::BoxBody>;
@@ -53,11 +53,7 @@ struct LogApiKey;
 
 impl<S> Transform<S, ServiceRequest> for LogApiKey
 where
-    S: Service<
-        ServiceRequest,
-        Response = ServiceResponse<actix_web::body::BoxBody>,
-        Error = actix_web::Error,
-    >,
+    S: Service<ServiceRequest, Response = ServiceResponse, Error = actix_web::Error>,
     S::Future: 'static,
 {
     type Response = ServiceResponse<actix_web::body::BoxBody>;

@@ -1,12 +1,12 @@
 use std::time::Duration;
 
-use sqlx::{mysql::MySqlPoolOptions, MySql, Pool};
+use sqlx::{mysql::MySqlPoolOptions, MySqlPool};
 
 use crate::init_config::InitConfig;
 
 pub struct DbClients {
     pub clickhouse: clickhouse::Client,
-    pub mysql: Pool<MySql>,
+    pub mysql: MySqlPool,
 }
 
 /// 初始化项目数据库

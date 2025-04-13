@@ -2,13 +2,14 @@ use actix_web::web::Data;
 use github::mount_github_scope;
 use utoipa_actix_web::service_config::ServiceConfig;
 
-use crate::behind::github_state::GithubState;
+use crate::background::github_state::GithubStateCache;
 
+mod error;
 mod github;
 pub mod jwt_mw;
 
 /// Run external configuration as part of the application building process
-pub fn config(github_state: Data<GithubState>) -> impl FnOnce(&mut ServiceConfig) {
+pub fn config(github_state: Data<GithubStateCache>) -> impl FnOnce(&mut ServiceConfig) {
     |config: &mut ServiceConfig| {
         mount_github_scope(config, github_state);
     }

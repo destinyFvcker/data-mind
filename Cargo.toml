@@ -4,10 +4,17 @@ version = "0.1.0"
 edition = "2021"
 
 [workspace]
-members = [".", "_akshare-monitor", "_coze-plugin", "_web-server"]
+members = [
+    ".",
+    "_akshare-monitor",
+    "_coze-plugin",
+    "_web-server",
+    "__common_macro",
+    "__common_error",
+]
 
 [workspace.dependencies]
-tokio = { version = "1.43.0", features = [
+tokio = { version = "1.44.2", features = [
     "macros",
     "rt-multi-thread",
     "sync",
@@ -30,7 +37,7 @@ ftlog = "0.2.14"
 time = "0.3.37"
 reqwest = { version = "0.12.14", features = ["json"] }
 serde_json = "1.0.140"
-actix-web = "4.10.2"
+actix-web = { version = "4.10.2", features = ["macros"] }
 utoipa-actix-web = "0.1.2"
 utoipa-scalar = { version = "0.3.0", features = ["actix-web"] }
 utoipa = { version = "5.3.1", features = ["actix_extras"] }
@@ -46,6 +53,8 @@ sqlx = { version = "0.8.3", features = [
 dashmap = "6.1.0"
 rand = "0.9.0"
 futures = "0.3.31"
+http = "1.3.1"
+strum = { version = "0.27.1", features = ["derive"] }
 
 [dependencies]
 serde.workspace = true
