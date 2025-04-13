@@ -9,15 +9,15 @@ const FRESH_TIME: i8 = 2;
 
 /// 一个dashmap，用于在用户使用github进行鉴权登陆时生成并储存一个随机生成的字符串
 /// 并在稍后用户重定向回服务器时取出进行校验
-pub struct GithubState {
+pub struct GithubStateCache {
     /// i8之中记录了剩余过期时间，2分钟过期
     state_map: DashMap<String, i8>,
 }
 
-impl GithubState {
+impl GithubStateCache {
     /// 开始后台的dashmap花型行为，将超过期限的dashmap state对删除
     pub fn begin_processing() -> Arc<Self> {
-        let github_state = Arc::new(GithubState {
+        let github_state = Arc::new(Self {
             state_map: DashMap::new(),
         });
 
