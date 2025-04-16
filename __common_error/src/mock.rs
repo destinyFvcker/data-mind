@@ -17,19 +17,19 @@
 use std::any::Any;
 use std::fmt;
 
+use crate::common_code::CommonCode;
 use crate::ext::{ErrorExt, StackError};
-use crate::status_code::StatusCode;
 
 /// A mock error mainly for test.
 #[derive(Debug)]
 pub struct MockError {
-    pub code: StatusCode,
+    pub code: CommonCode,
     source: Option<Box<MockError>>,
 }
 
 impl MockError {
     /// Create a new [MockError] without backtrace.
-    pub fn new(code: StatusCode) -> MockError {
+    pub fn new(code: CommonCode) -> MockError {
         MockError { code, source: None }
     }
 
@@ -55,7 +55,7 @@ impl std::error::Error for MockError {
 }
 
 impl ErrorExt for MockError {
-    fn status_code(&self) -> StatusCode {
+    fn common_code(&self) -> CommonCode {
         self.code
     }
 

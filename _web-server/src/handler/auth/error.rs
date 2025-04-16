@@ -1,72 +1,101 @@
-use snafu::Snafu;
+use std::fmt::Write;
 
-#[derive(Debug, Snafu)]
-pub enum AuthError {}
+use actix_web::{
+    body::BoxBody,
+    http::header::{self, HeaderName, HeaderValue, TryIntoHeaderValue},
+    web::BytesMut,
+    HttpResponse, ResponseError,
+};
+use common_error::{
+    common_code::{to_http_code, CommonCode},
+    ext::ErrorExt,
+};
+use common_macro::stack_trace_debug;
+use snafu::{Location, Snafu};
 
-#[cfg(test)]
-mod test {
-    use common_macro::stack_trace_debug;
-    use serde::{Deserialize, Serialize};
-    use snafu::{Location, ResultExt, Snafu};
+#[derive(Snafu)]
+#[snafu(visibility(pub))]
+#[stack_trace_debug]
+pub enum Error {
+    // --- plain auth error
+    #[snafu(display(
+        "The input account {} does not exist, please create one first",
+        email_address
+    ))]
+    UserNotFound { email_address: String },
+    #[snafu(display(
+        "Account {}'s input password incorrect, please try again",
+        email_address
+    ))]
+    UserPasswordMismatch { email_address: String },
 
-    #[derive(Snafu)]
-    #[stack_trace_debug]
-    enum SimpleError {
-        #[snafu(display("Failed to deserialize value"))]
-        ValueDeserialize {
-            #[snafu(source)]
-            error: serde_json::error::Error, // <-- external source
-            #[snafu(implicit)]
-            location: Location,
-        },
+    // --- jwt auth error
+    #[snafu(display("The session has expired, please log in again"))]
+    JwtExpire,
+    #[snafu(display("authorization not found, you should login first"))]
+    JwtNotFound,
+    #[snafu(display("Invalid credential (jwt格式错误)"))]
+    InvalidCredential {
+        #[snafu(source)]
+        error: jsonwebtoken::errors::Error, // kind = 其它
+    },
+    #[snafu(display("Invalid credential signature (jwt签名不匹配)"))]
+    InvalidSignature {
+        #[snafu(source)]
+        error: jsonwebtoken::errors::Error, // kind == InvalidSignature
+    },
 
-        #[allow(unused)]
-        #[snafu(display("Table engine not found: {}", engine_name))]
-        TableEngineNotFound {
-            engine_name: String,
-            #[snafu(implicit)]
-            location: Location,
-            source: common_error::mock::MockError, // <-- internal source
-        },
-    }
+    // --- github oauth error
+    #[snafu(display("Github state should be there when login throght github oauth"))]
+    GithubStateNotFound,
+    #[snafu(display("Faild to query github api"))]
+    GithubNetWorkFaild {
+        #[snafu(source)]
+        error: reqwest::Error,
+        #[snafu(implicit)]
+        localtion: Location,
+    },
+}
 
-    #[derive(Debug, Deserialize, Serialize)]
-    struct SimpleStruct {
-        filed: String,
-    }
+impl ErrorExt for Error {
+    fn common_code(&self) -> CommonCode {
+        use common_error::common_code;
 
-    async fn decode_msg(msg: &[u8]) -> Result<SimpleStruct, SimpleError> {
-        serde_json::from_slice(&msg).context(ValueDeserializeSnafu) // propagate error with new stack and context
-    }
-
-    #[actix_web::test]
-    async fn test_common_macro() {
-        let simple1 = SimpleStruct {
-            filed: "simple struct 1".to_string(),
-        };
-
-        let simple1_json = serde_json::to_string(&simple1).unwrap();
-        let simple1_bytes = simple1_json.bytes().collect::<Vec<u8>>();
-
-        let result1 = decode_msg(&simple1_bytes).await;
-
-        match result1 {
-            Ok(struc) => {
-                println!("{:?}", struc);
+        match self {
+            Error::UserNotFound { .. } => common_code::CommonCode::UserNotFound,
+            Error::UserPasswordMismatch { .. } => common_code::CommonCode::UserPasswordMismatch,
+            Error::InvalidCredential { .. } | Error::InvalidSignature { .. } | Error::JwtExpire => {
+                common_code::CommonCode::InvalidAuthHeader
             }
-            Err(err) => {
-                println!("{:?}", err);
+            Error::GithubStateNotFound | Error::JwtNotFound => {
+                common_code::CommonCode::AccessDenied
             }
+            Error::GithubNetWorkFaild { .. } => common_code::CommonCode::Internal,
         }
+    }
 
-        let result2 = decode_msg(&simple1_bytes[1..]).await;
-        match result2 {
-            Ok(struc) => {
-                println!("{:?}", struc);
-            }
-            Err(err) => {
-                println!("{:?}", err);
-            }
-        }
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
     }
 }
+
+impl ResponseError for Error {
+    fn status_code(&self) -> actix_web::http::StatusCode {
+        let code = to_http_code(self.common_code()).as_u16();
+        actix_web::http::StatusCode::from_u16(code).unwrap()
+    }
+
+    fn error_response(&self) -> HttpResponse<BoxBody> {
+        let mut res = HttpResponse::new(self.status_code());
+
+        let mut buf = BytesMut::new();
+        let _ = buf.write_fmt(core::format_args!("{}", self.output_msg()));
+
+        let mime = mime::TEXT_PLAIN_UTF_8.try_into_value().unwrap();
+        res.headers_mut().insert(header::CONTENT_TYPE, mime);
+
+        res.set_body(BoxBody::new(buf))
+    }
+}
+
+pub type Result<T> = std::result::Result<T, Error>;

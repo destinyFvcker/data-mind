@@ -42,6 +42,8 @@ async fn main() {
     let db_clietns = Arc::new(init::init_db(&app_config).await);
     // init github_state refresh on main thread
     let github_state = background::github_state::GithubStateCache::begin_processing();
+    // init reqwest client
+    let reqwest_client = init::init_reqwest_client();
     // ----------------------------------------- done
 
     #[derive(OpenApi)]
@@ -59,6 +61,7 @@ async fn main() {
             .into_utoipa_app()
             .openapi(ApiDoc::openapi())
             .app_data(Data::from(db_clietns.clone()))
+            .app_data(Data::new(reqwest_client.clone()))
             // .service(utoipa_actix_web::scope("/api").configure(handler::user::config()))
             .service(
                 utoipa_actix_web::scope("/auths")
