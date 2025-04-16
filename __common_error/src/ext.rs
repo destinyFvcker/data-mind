@@ -15,13 +15,13 @@
 use std::any::Any;
 use std::sync::Arc;
 
-use crate::status_code::StatusCode;
+use crate::common_code::CommonCode;
 
 /// Extension to [`Error`](std::error::Error) in std.
 pub trait ErrorExt: StackError {
     /// Map this error to [StatusCode].
-    fn status_code(&self) -> StatusCode {
-        StatusCode::Unknown
+    fn common_code(&self) -> CommonCode {
+        CommonCode::Unknown
     }
 
     /// Returns the error as [Any](std::any::Any) so that it can be
@@ -32,10 +32,10 @@ pub trait ErrorExt: StackError {
     where
         Self: Sized,
     {
-        match self.status_code() {
-            StatusCode::Unknown | StatusCode::Internal => {
+        match self.common_code() {
+            CommonCode::Unknown | CommonCode::Internal => {
                 // masks internal error from end user
-                format!("Internal error: {}", self.status_code() as u32)
+                format!("Internal error: {}", self.common_code() as u32)
             }
             _ => {
                 let error = self.last();
@@ -154,8 +154,8 @@ impl std::error::Error for BoxedError {
 }
 
 impl crate::ext::ErrorExt for BoxedError {
-    fn status_code(&self) -> crate::status_code::StatusCode {
-        self.inner.status_code()
+    fn common_code(&self) -> crate::common_code::CommonCode {
+        self.inner.common_code()
     }
 
     fn as_any(&self) -> &dyn std::any::Any {
@@ -185,12 +185,12 @@ impl StackError for BoxedError {
 #[derive(Debug)]
 pub struct PlainError {
     msg: String,
-    status_code: StatusCode,
+    common_code: CommonCode,
 }
 
 impl PlainError {
-    pub fn new(msg: String, status_code: StatusCode) -> Self {
-        Self { msg, status_code }
+    pub fn new(msg: String, common_code: CommonCode) -> Self {
+        Self { msg, common_code }
     }
 }
 
@@ -207,8 +207,8 @@ impl std::error::Error for PlainError {
 }
 
 impl crate::ext::ErrorExt for PlainError {
-    fn status_code(&self) -> crate::status_code::StatusCode {
-        self.status_code
+    fn common_code(&self) -> crate::common_code::CommonCode {
+        self.common_code
     }
 
     fn as_any(&self) -> &dyn std::any::Any {

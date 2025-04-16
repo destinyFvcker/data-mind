@@ -36,3 +36,12 @@ pub async fn init_db(app_config: &InitConfig) -> DbClients {
     data_mind::utils::perform_mysql_ddl(&mysql, include_str!("../ddl/auth.sql")).await;
     DbClients { clickhouse, mysql }
 }
+
+/// 初始化reqwest客户端
+pub fn init_reqwest_client() -> reqwest::Client {
+    reqwest::ClientBuilder::new()
+        .connect_timeout(Duration::from_secs(5))
+        .timeout(Duration::from_secs(10))
+        .build()
+        .unwrap()
+}

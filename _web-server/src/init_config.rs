@@ -16,6 +16,7 @@ pub struct InitConfig {
     pub server: ServerConfig,
     pub mysql: MysqlConfig,
     pub clickhouse: ClickhouseConfig,
+    pub jwt_secret_key: String,
 }
 
 #[derive(Debug, Deserialize)]
@@ -63,6 +64,7 @@ impl InitConfig {
                     .keep_prefix(true)
                     .separator("_"),
             )
+            .add_source(Environment::with_prefix("jwt").keep_prefix(true))
             .build()?
             .try_deserialize::<Self>()?;
 
