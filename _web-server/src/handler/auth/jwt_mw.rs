@@ -1,142 +1,144 @@
 //! json web token auth middleware
 
+use crate::schema::auth_schema::JwtClaims;
 use actix_web::{
+    body::EitherBody,
     dev::{self, Service, ServiceRequest, ServiceResponse, Transform},
     http::{
-        header::{HeaderName, HeaderValue},
+        header::{HeaderName, HeaderValue, AUTHORIZATION},
         Method,
     },
     Error, HttpResponse, HttpResponseBuilder,
 };
-use futures::future::{self, LocalBoxFuture, Ready};
-use serde::{Deserialize, Serialize};
-use utoipa::{openapi::Response, ToSchema};
+use anyhow::ensure;
+use futures::{
+    future::{self, ready, LocalBoxFuture, Ready},
+    FutureExt, TryFutureExt,
+};
+use jsonwebtoken::{
+    decode, encode, errors::ErrorKind, Algorithm, DecodingKey, EncodingKey, Header, Validation,
+};
 
-/// Todo endpoint error responses
-#[derive(Serialize, Deserialize, Clone, ToSchema)]
-pub(super) enum ErrorResponse {
-    /// When Todo is not found by search term.
-    NotFound(String),
-    /// When there is a conflict storing a new todo.
-    Conflict(String),
-    /// When todo endpoint was called without correct credentials
-    Unauthorized(String),
+/// server access jwt auth middle ware
+struct JwtAuthGuard {
+    jwt_secret_key: String,
 }
 
-const API_KEY_NAME: &str = "todo_apikey";
-const API_KEY: &str = "utoipa-rocks";
-
-/// Require api key middleware will actually require valid api key
-struct RequireApiKey;
-
-impl<S> Transform<S, ServiceRequest> for RequireApiKey
+impl<S, B> Transform<S, ServiceRequest> for JwtAuthGuard
 where
-    S: Service<ServiceRequest, Response = ServiceResponse, Error = actix_web::Error>,
+    S: Service<ServiceRequest, Response = ServiceResponse<B>, Error = actix_web::Error>,
     S::Future: 'static,
+    B: 'static,
 {
-    type Response = ServiceResponse<actix_web::body::BoxBody>;
-    type Error = actix_web::Error;
-    type Transform = ApiKeyMiddleware<S>;
+    type Response = ServiceResponse<EitherBody<B>>;
+    type Error = Error;
+    type Transform = JwtAuthMiddleware<S>;
     type InitError = ();
     type Future = Ready<Result<Self::Transform, Self::InitError>>;
 
     fn new_transform(&self, service: S) -> Self::Future {
-        future::ready(Ok(ApiKeyMiddleware {
+        ready(Ok(JwtAuthMiddleware {
             service,
-            log_only: false,
+            decoding_key: DecodingKey::from_secret(self.jwt_secret_key.as_bytes()),
+            validation: Validation::new(Algorithm::HS512),
         }))
     }
 }
 
-/// Log api key middleware only logs about missing or invalid api keys
-struct LogApiKey;
-
-impl<S> Transform<S, ServiceRequest> for LogApiKey
-where
-    S: Service<ServiceRequest, Response = ServiceResponse, Error = actix_web::Error>,
-    S::Future: 'static,
-{
-    type Response = ServiceResponse<actix_web::body::BoxBody>;
-    type Error = actix_web::Error;
-    type Transform = ApiKeyMiddleware<S>;
-    type InitError = ();
-    type Future = Ready<Result<Self::Transform, Self::InitError>>;
-
-    fn new_transform(&self, service: S) -> Self::Future {
-        future::ready(Ok(ApiKeyMiddleware {
-            service,
-            log_only: true,
-        }))
-    }
-}
-
-struct ApiKeyMiddleware<S> {
+struct JwtAuthMiddleware<S> {
     service: S,
-    log_only: bool,
+    decoding_key: DecodingKey,
+    validation: Validation,
 }
 
-impl<S> Service<ServiceRequest> for ApiKeyMiddleware<S>
+impl<S, B> Service<ServiceRequest> for JwtAuthMiddleware<S>
 where
-    S: Service<
-        ServiceRequest,
-        Response = ServiceResponse<actix_web::body::BoxBody>,
-        Error = actix_web::Error,
-    >,
+    S: Service<ServiceRequest, Response = ServiceResponse<B>, Error = Error>,
     S::Future: 'static,
+    B: 'static,
 {
-    type Response = ServiceResponse<actix_web::body::BoxBody>;
-    type Error = actix_web::Error;
-    type Future = LocalBoxFuture<'static, Result<Self::Response, actix_web::Error>>;
+    type Response = ServiceResponse<EitherBody<B>>;
+    type Error = Error;
+    type Future = LocalBoxFuture<'static, Result<Self::Response, Self::Error>>;
 
-    fn poll_ready(
-        &self,
-        ctx: &mut core::task::Context<'_>,
-    ) -> std::task::Poll<Result<(), Self::Error>> {
-        self.service.poll_ready(ctx)
-    }
+    dev::forward_ready!(service);
 
     fn call(&self, req: ServiceRequest) -> Self::Future {
-        let response = |req: ServiceRequest, response: HttpResponse| -> Self::Future {
-            Box::pin(async { Ok(req.into_response(response)) })
+        // 查看req header之中有没有携带authentication头，没有则直接返回401错误
+        // let req_header = req.headers(status_to_http_code(self));
+
+        self.service
+            .call(req)
+            .map_ok(ServiceResponse::map_into_left_body)
+            .boxed_local()
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn test_jwt() {
+        let my_claims = JwtClaims {
+            sub: "b@b.com".to_owned(),
+            exp: 10000000000,
+        };
+        let key = b"secret";
+
+        let header = Header {
+            kid: Some("signing_key".to_owned()),
+            alg: Algorithm::HS512,
+            ..Default::default()
         };
 
-        match req.headers().get(API_KEY_NAME) {
-            Some(key) if key != API_KEY => {
-                if self.log_only {
-                    ftlog::debug!("Incorrect api api provided!!!")
-                } else {
-                    return response(
-                        req,
-                        HttpResponse::Unauthorized().json(ErrorResponse::Unauthorized(
-                            String::from("incorrect api key"),
-                        )),
-                    );
-                }
+        let token = encode(&header, &my_claims, &EncodingKey::from_secret(key)).unwrap();
+        println!("{:?}", token);
+
+        let token_data = match decode::<JwtClaims>(
+            &token,
+            &DecodingKey::from_secret(key),
+            &Validation::new(Algorithm::HS512),
+        ) {
+            Ok(c) => c,
+            Err(err) => match *err.kind() {
+                ErrorKind::InvalidToken => panic!(), // Example on how to handle a specific error
+                _ => panic!(),
+            },
+        };
+        println!("{:?}", token_data.claims);
+        println!("{:?}", token_data.header);
+
+        let fake_token = "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzUxMiIsImtpZCI6InNpZ25pbmdfa2V5In0.eyJzdWIiOiJhQGEuY29tIiwiZXhwIjoxMDAwMDAwMDAwMH0.PYXI9GiQ-C02cGu_kG7EFj_Zs8x6laI2qxgw_mPDArz3yB1z_z99c2iCnNuL-OHVaEgxNzYkMqJ-10gZv_1DGA";
+        match decode::<JwtClaims>(
+            &fake_token,
+            &DecodingKey::from_secret(key),
+            &Validation::new(Algorithm::HS512),
+        ) {
+            Ok(c) => {
+                println!("{:?}", c.claims);
+                println!("{:?}", c.header);
             }
-            None => {
-                if self.log_only {
-                    ftlog::debug!("Missing api key!!!")
-                } else {
-                    return response(
-                        req,
-                        HttpResponse::Unauthorized()
-                            .json(ErrorResponse::Unauthorized(String::from("missing api key"))),
-                    );
-                }
+            Err(err) => {
+                assert_eq!(ErrorKind::InvalidSignature, *err.kind());
+                println!("error = {:#?}", err);
             }
-            _ => (), // just passthrough
         }
 
-        if self.log_only {
-            ftlog::debug!("Performing operation")
-        }
-
-        let future = self.service.call(req);
-
-        Box::pin(async move {
-            let response = future.await?;
-
-            Ok(response)
-        })
+        // let invalid_token = "eyeXAiOiJKV1QiLCJhbGciOiJIUzUxMiIsImtpZCI6InNpZ25pbmdfa2V5In0.eyJzdWIiOiJhQGEuY29tIiwiZXhwIjoxMDwMDAwMDAwMH0.PYXI9GiQ-C02cGu_kG7EFj_Zs8x6laI2qxgw_mPDArz3yB1z_z99c2iCnNuL-OHVaEgxNzYkMqJ-10gZv_1DGA";
+        // match decode::<JwtClaims>(
+        //     &invalid_token,
+        //     &DecodingKey::from_secret(key),
+        //     &Validation::new(Algorithm::HS512),
+        // ) {
+        //     Ok(c) => {
+        //         println!("{:?}", c.claims);
+        //         println!("{:?}", c.header);
+        //     }
+        //     Err(err) => {
+        //         assert_eq!(ErrorKind::InvalidToken, *err.kind());
+        //         println!("error = {:#?}", err);
+        //     }
+        // }
     }
 }

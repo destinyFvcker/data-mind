@@ -1,10 +1,14 @@
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 
-use crate::repository::{
-    self,
-    auth_repo::{UserIdentityRepo, UserRepo},
-};
+/// JWT的有效负载部分定义
+#[derive(Debug, Serialize, Deserialize)]
+pub struct JwtClaims {
+    /// 主题，即用户标识
+    pub sub: String,
+    /// 过期时间（Expiry time），用于设置 token 的过期时间。
+    pub exp: u64,
+}
 
 /// 在从当前服务重定向到github OAuth界面需要的一个不可猜测的随机字符串，
 /// 用于防止跨站请求伪造攻击
@@ -23,22 +27,33 @@ pub struct GithubCallback {
     pub state: String,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
-#[serde(transparent)]
-pub struct UserSchema(pub UserRepo);
-
-#[derive(Debug, Serialize, Deserialize)]
-#[serde(transparent)]
-pub struct UserIdentitySchema(pub UserIdentityRepo);
-
-impl UserSchema {
-    pub fn into_innter(self) -> UserRepo {
-        self.0
-    }
+#[derive(Debug, Deserialize)]
+pub struct UserSchema {
+    pub email: String,
+    pub password: String,
+    pub mobile: Option<String>,
+    pub nickname: String,
+    pub avatar_url: String,
 }
 
-impl UserIdentitySchema {
-    pub fn into_inner(self) -> UserIdentityRepo {
-        self.0
-    }
+#[derive(Debug, Deserialize)]
+pub struct UserIdentitySchema {
+    pub provider: String,
+    pub provider_user_id: String,
 }
+
+// #[derive(Debug, Serialize, Deserialize)]
+// #[serde(transparent)]
+// pub struct UserIdentitySchema(pub UserIdentityRepo);
+
+// impl UserSchema {
+//     pub fn into_innter(self) -> UserRepo {
+//         self.0
+//     }
+// }
+
+// impl UserIdentitySchema {
+//     pub fn into_inner(self) -> UserIdentityRepo {
+//         self.0
+//     }
+// }
