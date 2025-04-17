@@ -1,6 +1,6 @@
 use actix_web::{web::Data, App, HttpServer};
 use ftlog::appender::{FileAppender, Period};
-use handler::*;
+use handler::{auth::jwt_mw::JwtAuthGuard, *};
 use std::{env, net::Ipv4Addr, sync::Arc};
 use time::Duration;
 use utoipa::OpenApi;
@@ -62,7 +62,10 @@ async fn main() {
             .openapi(ApiDoc::openapi())
             .app_data(Data::from(db_clietns.clone()))
             .app_data(Data::new(reqwest_client.clone()))
-            // .service(utoipa_actix_web::scope("/api").configure(handler::user::config()))
+            .service(
+                utoipa_actix_web::scope("/api")
+                    .wrap(JwtAuthGuard::new(shared_config.jwt_secret_key.clone())),
+            )
             .service(
                 utoipa_actix_web::scope("/auths")
                     .configure(handler::auth::config(Data::from(github_state.clone()))),
