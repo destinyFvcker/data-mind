@@ -17,6 +17,7 @@ pub struct InitConfig {
     pub mysql: MysqlConfig,
     pub clickhouse: ClickhouseConfig,
     pub jwt_secret_key: String,
+    pub github: GithubConfig,
 }
 
 #[derive(Debug, Deserialize)]
@@ -44,6 +45,14 @@ pub struct ClickhouseConfig {
     pub database: String,
 }
 
+#[derive(Debug, Deserialize)]
+pub struct GithubConfig {
+    /// 注册时从 GitHub 收到的客户端 ID。
+    pub client_id: String,
+    /// github 签发的 client_secret
+    pub secret: String,
+}
+
 impl InitConfig {
     pub fn new() -> anyhow::Result<Self> {
         let args = Args::parse();
@@ -65,6 +74,11 @@ impl InitConfig {
                     .separator("_"),
             )
             .add_source(Environment::with_prefix("jwt").keep_prefix(true))
+            .add_source(
+                Environment::with_prefix("github")
+                    .keep_prefix(true)
+                    .separator("_"),
+            )
             .build()?
             .try_deserialize::<Self>()?;
 

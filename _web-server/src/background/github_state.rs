@@ -1,5 +1,5 @@
 //! 刷新/过期 github OAuth 登陆发放的随机字符串state
-use std::{collections::HashMap, sync::Arc, thread, time::Duration};
+use std::{collections::HashMap, sync::Arc, time::Duration};
 
 use dashmap::DashMap;
 use rand::{distr::Alphanumeric, Rng};
@@ -11,7 +11,7 @@ const FRESH_TIME: i8 = 2;
 /// 并在稍后用户重定向回服务器时取出进行校验
 pub struct GithubStateCache {
     /// i8之中记录了剩余过期时间，2分钟过期
-    state_map: DashMap<String, i8>,
+    pub state_map: DashMap<String, i8>,
 }
 
 impl GithubStateCache {

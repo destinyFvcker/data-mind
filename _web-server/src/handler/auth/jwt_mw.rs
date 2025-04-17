@@ -1,27 +1,35 @@
 //! json web token auth middleware
 
-use crate::schema::auth_schema::JwtClaims;
+use std::rc::Rc;
+
+use crate::{
+    common_err_res, handler::auth::error::JwtNotFoundSnafu, schema::auth_schema::JwtClaims,
+};
 use actix_web::{
     body::EitherBody,
     dev::{self, Service, ServiceRequest, ServiceResponse, Transform},
-    http::{
-        header::{HeaderName, HeaderValue, AUTHORIZATION},
-        Method,
-    },
-    Error, HttpResponse, HttpResponseBuilder,
+    http::header,
+    Error, HttpMessage,
 };
-use anyhow::ensure;
+use chrono::Utc;
 use futures::{
-    future::{self, ready, LocalBoxFuture, Ready},
+    future::{ready, LocalBoxFuture, Ready},
     FutureExt, TryFutureExt,
 };
-use jsonwebtoken::{
-    decode, encode, errors::ErrorKind, Algorithm, DecodingKey, EncodingKey, Header, Validation,
-};
+use jsonwebtoken::{decode, Algorithm, DecodingKey, Validation};
+use snafu::ResultExt;
+
+use super::error::{InvalidCredentialSnafu, InvalidSignatureSnafu, JwtExpireSnafu};
 
 /// server access jwt auth middle ware
-struct JwtAuthGuard {
+pub struct JwtAuthGuard {
     jwt_secret_key: String,
+}
+
+impl JwtAuthGuard {
+    pub fn new(jwt_secret_key: String) -> Self {
+        Self { jwt_secret_key }
+    }
 }
 
 impl<S, B> Transform<S, ServiceRequest> for JwtAuthGuard
@@ -45,7 +53,7 @@ where
     }
 }
 
-struct JwtAuthMiddleware<S> {
+pub struct JwtAuthMiddleware<S> {
     service: S,
     decoding_key: DecodingKey,
     validation: Validation,
@@ -65,7 +73,36 @@ where
 
     fn call(&self, req: ServiceRequest) -> Self::Future {
         // 查看req header之中有没有携带authentication头，没有则直接返回401错误
-        // let req_header = req.headers(status_to_http_code(self));
+        let req_header = req.headers();
+
+        let Some(jwt) = req_header
+            .get(header::AUTHORIZATION)
+            .map(|header_value| header_value.to_str())
+        else {
+            return Box::pin(async { common_err_res!(JwtNotFoundSnafu.build()) });
+        };
+
+        let Ok(jwt) = jwt else {
+            return Box::pin(async { common_err_res!(InvalidCredentialSnafu.build()) });
+        };
+        if !jwt.starts_with("Bear ") {
+            return Box::pin(async { common_err_res!(InvalidCredentialSnafu.build()) });
+        }
+
+        let jwt = &jwt[5..];
+        let token_data = match decode::<JwtClaims>(jwt, &self.decoding_key, &self.validation)
+            .context(InvalidSignatureSnafu)
+        {
+            Ok(token_data) => token_data,
+            Err(err) => return Box::pin(async { common_err_res!(err) }),
+        };
+
+        let now = Utc::now().timestamp_millis();
+        if now > token_data.claims.exp {
+            return Box::pin(async { common_err_res!(JwtExpireSnafu.build()) });
+        }
+
+        req.extensions_mut().insert(Rc::new(token_data.claims));
 
         self.service
             .call(req)
@@ -76,13 +113,15 @@ where
 
 #[cfg(test)]
 mod test {
+    use jsonwebtoken::{encode, errors::ErrorKind, EncodingKey, Header};
+
     use super::*;
 
     #[test]
     fn test_jwt() {
         let my_claims = JwtClaims {
             sub: "b@b.com".to_owned(),
-            exp: 10000000000,
+            exp: 1000000,
         };
         let key = b"secret";
 
