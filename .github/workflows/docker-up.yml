@@ -9,8 +9,8 @@ jobs:
         steps:
             - uses: actions/checkout@v4
             - run: |
-                  mkdir -p deploy/docker
-                  cp -R docker/ deploy/docker/
+                  mkdir -p deploy
+                  cp -R docker/ deploy/
                   cp compose.yml deploy/
             - uses: actions/upload-artifact@v4
               with:
