@@ -1,4 +1,5 @@
 use config::INIT_CONFIG;
+use data_mind::utils::perform_ch_ddl;
 use ftlog::{
     LevelFilter,
     appender::{Duration, FileAppender, Period},
@@ -23,10 +24,11 @@ async fn main() -> anyhow::Result<()> {
         .filter("scheduler::info", "scheduler", LevelFilter::Info)
         .appender(
             "scheduler",
-            FileAppender::rotate(
-                format!("{}/scheduler.log", INIT_CONFIG.server.logdir),
-                Period::Day,
-            ),
+            FileAppender::builder()
+                .path(format!("{}/scheduler.log", INIT_CONFIG.server.logdir))
+                .rotate(Period::Day)
+                .expire(Duration::days(2))
+                .build(),
         )
         .max_log_level(ftlog::LevelFilter::Info)
         .time_format(time_format)
@@ -57,41 +59,12 @@ async fn main() -> anyhow::Result<()> {
 }
 
 async fn perform_ddl(ch_client: &clickhouse::Client) {
-    let cleanup = |raw_ddl: &str| {
-        raw_ddl
-            .to_string()
-            .trim()
-            .lines()
-            .map(|s| s.to_string())
-            .filter(|line| {
-                !(line.trim().starts_with("/*") || line.trim().starts_with("--") || line.is_empty())
-            })
-            .map(|line| match line.find("--") {
-                Some(pos) => line[..pos].trim().to_owned(),
-                None => line.trim().to_owned(),
-            })
-            .reduce(|s, line| s + " " + &line)
-            .map(|str| str.trim().to_owned())
-            .unwrap_or("".to_string())
-    };
-
-    async fn query_ddl_by_line(ddl: String, ch_client: &clickhouse::Client) {
-        let ddl: Vec<String> = ddl.split(";").map(|s| s.to_string()).collect();
-        for sql in ddl.into_iter() {
-            if sql.is_empty() {
-                continue;
-            }
-            ch_client.query(&sql).execute().await.unwrap();
-        }
-    }
-
     let ddls = [
         include_str!("../ddl/init_stock.sql"),
         include_str!("../ddl/init_index.sql"),
     ];
 
     for ddl in ddls {
-        let stock_ddl = cleanup(ddl);
-        query_ddl_by_line(stock_ddl, ch_client).await;
+        perform_ch_ddl(ch_client, ddl).await;
     }
 }
