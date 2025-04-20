@@ -72,7 +72,7 @@ impl<E: ErrorExt> ResponseError for ErrRes<E> {
 
     fn error_response(&self) -> HttpResponse<BoxBody> {
         if self.error.common_code().should_log_error() {
-            ftlog::error!("{:?}", self);
+            ftlog::error!("\n{:?}", self.error);
         }
 
         let mut res = HttpResponse::new(self.status_code());

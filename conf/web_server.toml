@@ -1,6 +1,7 @@
 [server]
-port = 8800
 fe = "/home/destinyfvcker/projects/data-mind/fe"
+port = 8800
+# fe = "/Users/zilu/dev/fe-dev/projects/datamind-fe/build"
 
 [clickhouse]
 host = "127.0.0.1"

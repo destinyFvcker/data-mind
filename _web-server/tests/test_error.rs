@@ -10,6 +10,14 @@ enum SimpleError {
     ValueDeserialize {
         #[snafu(source)]
         error: serde_json::error::Error, // <-- external source
+                                         // #[snafu(implicit)]
+                                         // location: Location,
+    },
+
+    #[snafu(display("Failed to request value"))]
+    ValueReqwest {
+        #[snafu(source)]
+        error: reqwest::Error, // <-- external source
         #[snafu(implicit)]
         location: Location,
     },
@@ -18,8 +26,8 @@ enum SimpleError {
     #[snafu(display("Table engine not found: {}", engine_name))]
     TableEngineNotFound {
         engine_name: String,
-        #[snafu(implicit)]
-        location: Location,
+        // #[snafu(implicit)]
+        // location: Location,
         source: common_error::mock::MockError, // <-- internal source
     },
 }
@@ -38,6 +46,29 @@ fn internal_fail() -> Result<(), SimpleError> {
     Err(error).context(TableEngineNotFoundSnafu {
         engine_name: "engine name".to_owned(),
     })
+}
+
+async fn simple_request() -> Result<String, SimpleError> {
+    let text = reqwest::get("https://www.rustswad-lang.org")
+        .await
+        .context(ValueReqwestSnafu)?
+        .text()
+        .await
+        .context(ValueReqwestSnafu)?;
+
+    Ok(text)
+}
+
+#[actix_web::test]
+async fn test_log_location() {
+    match simple_request().await {
+        Ok(text) => {
+            println!("result text = {:?}", text);
+        }
+        Err(err) => {
+            println!("response error = \n{:?}", err);
+        }
+    }
 }
 
 #[actix_web::test]

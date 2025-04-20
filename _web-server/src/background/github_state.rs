@@ -24,7 +24,7 @@ impl GithubStateCache {
         let arc_ref = github_state.clone();
         actix_web::rt::spawn(async move {
             loop {
-                arc_ref.dump_states();
+                // arc_ref.dump_states();
                 actix_web::rt::time::sleep(Duration::from_secs(60)).await;
                 arc_ref.state_map.alter_all(|_, v| v - 1);
                 arc_ref.state_map.retain(|_, value| *value > 0);
