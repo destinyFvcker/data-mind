@@ -1,4 +1,9 @@
-use actix_web::{web::Data, App, HttpServer};
+use actix_files::NamedFile;
+use actix_web::{
+    dev::{fn_service, ServiceRequest, ServiceResponse},
+    web::Data,
+    App, HttpServer,
+};
 use ftlog::appender::{FileAppender, Period};
 use handler::{auth::jwt_mw::JwtAuthGuard, *};
 use std::{env, net::Ipv4Addr, sync::Arc};
@@ -62,6 +67,7 @@ async fn main() {
             .openapi(ApiDoc::openapi())
             .app_data(Data::from(db_clietns.clone()))
             .app_data(Data::new(reqwest_client.clone()))
+            .app_data(Data::from(shared_config.clone()))
             .service(
                 utoipa_actix_web::scope("/api")
                     .wrap(JwtAuthGuard::new(shared_config.jwt_secret_key.clone())),
@@ -73,11 +79,24 @@ async fn main() {
             .openapi_service(|api| Scalar::with_url("/scalar-doc", api))
             .into_app();
 
-        app = if "1" == local_dev {
+        app = if local_dev == "1" {
             app
         } else {
+            let inner_config = shared_config.clone(); // TMD
             app.service(
-                actix_files::Files::new("/", &shared_config.server.fe).index_file("index.html"),
+                actix_files::Files::new("/", &shared_config.server.fe)
+                    .index_file("index.html") // .default_handler(f)
+                    .default_handler(fn_service(move |req: ServiceRequest| {
+                        let config = inner_config.clone();
+                        async move {
+                            let (req, _) = req.into_parts();
+                            let file =
+                                NamedFile::open_async(format!("{}/index.html", config.server.fe))
+                                    .await?;
+                            let res = file.into_response(&req);
+                            Ok(ServiceResponse::new(req, res))
+                        }
+                    })),
             )
         };
 

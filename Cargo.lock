@@ -3906,7 +3906,6 @@ dependencies = [
  "data_mind",
  "ftlog",
  "futures",
- "http 1.3.1",
  "jsonwebtoken",
  "mime",
  "rand 0.9.0",

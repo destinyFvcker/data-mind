@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use actix_web::{
-    get, post,
+    get,
     web::{self, Data, Json},
 };
 use snafu::{ensure, ResultExt};
@@ -40,6 +40,9 @@ async fn get_state(github_state: Data<GithubStateCache>) -> Json<auth_schema::Gi
 
 #[utoipa::path(
     tag = super::API_TAG,
+    params (
+        auth_schema::GithubCallback
+    ),
     responses(
         (status = 200, description = "empty body with jwt token in the header",
             headers(
@@ -50,9 +53,9 @@ async fn get_state(github_state: Data<GithubStateCache>) -> Json<auth_schema::Gi
         (status = 500, description = "github api fail", body = AuthError),
     ),
 )]
-#[post("/callback")]
+#[get("/callback")]
 async fn github_callback(
-    callback_body: web::Json<auth_schema::GithubCallback>,
+    callback_body: web::Query<auth_schema::GithubCallback>,
     state_cache: Data<GithubStateCache>,
     reqwest_client: Data<reqwest::Client>,
     init_config: Data<InitConfig>,
@@ -67,8 +70,10 @@ async fn github_callback(
     req_body.insert("client_id", &init_config.github.client_id);
     req_body.insert("client_secret", &init_config.github.secret);
     req_body.insert("code", &callback_body.code);
+    let header_map = reqwest::header::HeaderMap::from_iter([(reqwest::header::ACCEPT, "application/json".parse().unwrap())]);
     let github_res = reqwest_client
         .post("https://github.com/login/oauth/access_token")
+        .headers(header_map)
         .json(&req_body)
         .send()
         .await
@@ -79,15 +84,21 @@ async fn github_callback(
         .await
         .context(GithubApiFailSnafu)?;
 
+    ftlog::debug!("{:?}", token);
+
     let user_info_res = reqwest_client
         .get("https://api.github.com/user")
+        .header(reqwest::header::USER_AGENT, "data_mind")
         .header(
-            http::header::AUTHORIZATION,
-            format!("Bear {}", token.access_token),
+            reqwest::header::AUTHORIZATION,
+            format!("Bearer {}", token.access_token),
         )
+        .header(reqwest::header::ACCEPT, "application/vnd.github+json")
+        .header("X-GitHub-Api-Version", "2022-11-28")
         .send()
         .await
         .context(GithubApiFailSnafu)?;
+
     let correct_res = user_info_res
         .error_for_status()
         .context(GithubApiFailSnafu)?;
@@ -97,7 +108,37 @@ async fn github_callback(
         .context(GithubApiFailSnafu)?;
 
     // TODO 从数据库之中找到对应的用户信息 or 直接创建新用户
-    ftlog::info!("github user info = {:#?}", github_user_info);
+    ftlog::debug!("github user info = {:#?}", github_user_info);
 
     Ok(())
+}
+
+#[cfg(test)]
+mod test {
+    use crate::init::init_reqwest_client;
+    use super::*;
+
+    #[actix_web::test]
+    async fn test_github_user_api() {
+        let reqwest_clinet = init_reqwest_client();
+        let req =  reqwest_clinet.get("https://api.github.com/user")
+        .header(
+            "Authorization",
+            format!("Bearer {}", "you should not put this in code"),
+        )
+        .header("Accept", "application/vnd.github+json")
+        .header("X-GitHub-Api-Version", "2022-11-28");
+
+        let user_info_res = req.send().await.context(GithubApiFailSnafu).unwrap();
+
+         let correct_res = user_info_res
+            .error_for_status()
+            .context(GithubApiFailSnafu).unwrap();
+        let github_user_info = correct_res
+            .json::<GithubUserInfoRes>()
+            .await
+            .context(GithubApiFailSnafu).unwrap();
+
+        println!("{:?}", github_user_info);
+    }
 }

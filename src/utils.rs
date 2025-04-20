@@ -15,18 +15,19 @@ pub fn splite_date_naive(date_str: &str) -> &str {
 /// 通过传入一个clickhouse客户端的引用运行一个ddl.sql文件之中所有的内容，自动对注释内容进行去除
 pub async fn perform_ch_ddl(ch_client: &clickhouse::Client, raw_ddl_file: &str) {
     async fn query_ddl_by_line(ddl: String, ch_client: &clickhouse::Client) {
+        let ddl: Vec<String> = ddl.split(";").map(|s| s.to_string()).collect();
         for sql in ddl.into_iter() {
-            let ddl: Vec<String> = ddl.split(";").map(|s| s.to_string()).collect();
             if sql.is_empty() {
                 continue;
-                ch_client.query(&sql).execute().await.unwrap();
             }
+            ch_client.query(&sql).execute().await.unwrap();
         }
     }
+
     query_ddl_by_line(clean_up(raw_ddl_file), ch_client).await;
 }
-/// 通过传入一个mysql客户端的引用运行一个ddl.sql文件之中的所有内容，自动对注释内容进行去除
 
+/// 通过传入一个mysql客户端的引用运行一个ddl.sql文件之中的所有内容，自动对注释内容进行去除
 pub async fn perform_mysql_ddl(mysql_client: &MySqlPool, raw_ddl_file: &str) {
     async fn query_ddl_by_line(ddl: String, mysql_client: &MySqlPool) {
         let ddl: Vec<&str> = ddl.split(";").collect();
@@ -37,8 +38,8 @@ pub async fn perform_mysql_ddl(mysql_client: &MySqlPool, raw_ddl_file: &str) {
             mysql_client
                 .acquire()
                 .await
-                .execute(sql)
                 .unwrap()
+                .execute(sql)
                 .await
                 .unwrap();
         }
@@ -52,8 +53,8 @@ fn clean_up(raw_ddl_file: &str) -> String {
     raw_ddl_file
         .to_string()
         .trim()
-        .map(|s| s.to_string())
         .lines()
+        .map(|s| s.to_string())
         .filter(|line| {
             !(line.trim().starts_with("/*") || line.trim().starts_with("--") || line.is_empty())
         })

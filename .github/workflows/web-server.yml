@@ -15,6 +15,7 @@ jobs:
         runs-on: ubuntu-latest
         steps:
             - uses: actions/checkout@v4
+            - uses: dtolnay/rust-toolchain@nightly
             - name: Build
               run: cargo build -p $APP_NAME -r
             # 创建部署目录结构
@@ -27,7 +28,7 @@ jobs:
             - name: Upload build artifacts
               uses: actions/upload-artifact@v4
               with:
-                  name: web-server-release
+                  name: ${{ env.APP_NAME }}
                   path: deploy/
                   compression-level: 9
                   retention-days: 5
@@ -50,9 +51,9 @@ jobs:
                   SSH_PRIVATE_KEY: ${{ secrets.ALIYUN_SSH_KEY }}
                   REMOTE_HOST: ${{ secrets.ALIYUN_HOST }}
                   REMOTE_USER: ${{ secrets.ALIYUN_USER }}
-                  ARGS: "-avzr --delete --mkpath"
+                  ARGS: "-avzr --delete --mkpath --exclude='PID'"
                   SOURCE: "./deploy/"
-                  TARGET: ${{ env.DEPLOY_BASE }}${{ env.APP_NAME }}/
+                  TARGET: ${{ env.BASE_PATH }}${{ env.APP_NAME }}/
             # 重启服务
             - name: Restart service using SSH Remote Commands
               uses: appleboy/ssh-action@v1.2.1
@@ -66,6 +67,7 @@ jobs:
                   envs: BASE_PATH,APP_NAME,CLICKHOUSE_USER,CLICKHOUSE_PASSWORD
                   # 设置环境变量并执行脚本
                   script: |
+                      cd ${BASE_PATH}${APP_NAME}
                       chmod +x ./$APP_NAME
                       chmod +x ./restart_${APP_NAME}.sh
                       ./restart_${APP_NAME}.sh

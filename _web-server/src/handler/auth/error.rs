@@ -41,7 +41,7 @@ pub enum Error {
         #[snafu(source)]
         error: reqwest::Error,
         #[snafu(implicit)]
-        localtion: Location,
+        location: Location,
     },
 }
 

@@ -1,5 +1,5 @@
 use serde::{Deserialize, Serialize};
-use utoipa::ToSchema;
+use utoipa::{IntoParams, ToSchema};
 
 /// JWT的有效负载部分定义
 #[derive(Debug, Serialize, Deserialize)]
@@ -21,7 +21,7 @@ pub struct GithubState {
 }
 
 /// 从github OAuth界面重定向回服务时github请求携带的请求体
-#[derive(Debug, Deserialize, ToSchema)]
+#[derive(Debug, Deserialize, ToSchema, IntoParams)]
 pub struct GithubCallback {
     /// 收到的作为对用户同意使用github进行登陆的响应的代码。
     #[schema(example = "A.u2r=n?N^Ea3Y5.?rLzF+U0ce")]
