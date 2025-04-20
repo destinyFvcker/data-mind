@@ -2,20 +2,20 @@ name: docker compose up infrastructures
 on:
     workflow_dispatch:
 env:
-    DEPLOY_PATH: "/home/${{ secrets.ALIYUN_USER }}/projects/data-mind/"
+    DEPLOY_PATH: "/home/${{ secrets.ALIYUN_USER }}/projects/data-mind/infra-dm"
 jobs:
     package_up:
         runs-on: ubuntu-latest
         steps:
             - uses: actions/checkout@v4
             - run: |
-                  mkdir -p deployment/docker
-                  cp -R docker/ deployment/docker/
-                  cp compose.yml deployment/
+                  mkdir -p deploy
+                  cp -R docker/ deploy/
+                  cp compose.yml deploy/
             - uses: actions/upload-artifact@v4
               with:
-                  name: web-server-release
-                  path: deployment/
+                  name: docker-compose-deploy
+                  path: deploy/
                   compression-level: 9
                   retention-days: 5
 
@@ -26,15 +26,15 @@ jobs:
         steps:
             - uses: actions/download-artifact@v4
               with:
-                  name: web-server-release
-                  path: ./deploy-package
+                  name: docker-compose-deploy
+                  path: ./deploy
             - uses: easingthemes/ssh-deploy@main
               env:
                   SSH_PRIVATE_KEY: ${{ secrets.ALIYUN_SSH_KEY }}
                   REMOTE_HOST: ${{ secrets.ALIYUN_HOST }}
                   REMOTE_USER: ${{ secrets.ALIYUN_USER }}
-                  ARGS: "-avzr --mkpath"
-                  SOURCE: "./deploy-package/"
+                  ARGS: "-avzr --delete --mkpath"
+                  SOURCE: "./deploy/"
                   TARGET: ${{ env.DEPLOY_PATH }}
             - uses: appleboy/ssh-action@v1.2.1
               with:
