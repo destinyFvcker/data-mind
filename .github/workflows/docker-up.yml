@@ -33,7 +33,7 @@ jobs:
                   SSH_PRIVATE_KEY: ${{ secrets.ALIYUN_SSH_KEY }}
                   REMOTE_HOST: ${{ secrets.ALIYUN_HOST }}
                   REMOTE_USER: ${{ secrets.ALIYUN_USER }}
-                  ARGS: "-avzr --mkpath"
+                  ARGS: "-avzr --delete --mkpath"
                   SOURCE: "./deploy/"
                   TARGET: ${{ env.DEPLOY_PATH }}
             - uses: appleboy/ssh-action@v1.2.1
