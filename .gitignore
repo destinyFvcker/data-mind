@@ -18,6 +18,8 @@ target/
 
 # local test log dir
 logs/
+# local test tmp
+tmp/
 
 # macos shit
 .DS_Store
