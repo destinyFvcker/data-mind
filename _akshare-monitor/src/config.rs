@@ -4,7 +4,7 @@ use clap::Parser;
 use config::{Environment, File};
 use serde::Deserialize;
 
-pub static CONFIG: LazyLock<Config> = LazyLock::new(|| Config::new().unwrap());
+pub static INIT_CONFIG: LazyLock<InitConfig> = LazyLock::new(|| InitConfig::new().unwrap());
 
 /// data-mind 网页服务器
 #[derive(Parser, Debug)]
@@ -31,13 +31,13 @@ pub struct Clickhouse {
 }
 
 #[derive(Debug, Deserialize)]
-pub struct Config {
+pub struct InitConfig {
     pub server: Server,
     pub clickhouse: Clickhouse,
 }
 
-impl Config {
-    fn new() -> anyhow::Result<Config> {
+impl InitConfig {
+    fn new() -> anyhow::Result<Self> {
         let args = Args::parse();
         let s = config::Config::builder()
             .add_source(File::with_name(&args.config_path))

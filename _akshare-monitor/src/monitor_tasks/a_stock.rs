@@ -1,22 +1,22 @@
 use chrono::Utc;
 use data_mind::models::{akshare, ch_db};
 
-use crate::{
-    ch::CH_CLIENT,
-    scheduler::{SCHEDULE_TASK_MANAGER, Schedulable, ScheduleTaskType, TaskMeta},
-};
+use crate::scheduler::{SCHEDULE_TASK_MANAGER, Schedulable, ScheduleTaskType, TaskMeta};
 
 use super::{HTTP_CLIENT, TRADE_TIME_CRON, in_trade_time, with_base_url};
 
-pub(super) async fn start_a_stock_tasks() {
+/// 模块顶级方法，用于暴露给父模块调用将相关调度任务加入到全局调度器之中
+pub(super) async fn start_a_stock_tasks(ch_client: clickhouse::Client) {
     let realtime_stock_monitor = RealTimeStockMonitor {
         data_url: with_base_url("/stock_zh_a_spot_em"),
+        ch_client,
     };
     SCHEDULE_TASK_MANAGER.add_task(realtime_stock_monitor).await;
 }
 
 struct RealTimeStockMonitor {
     data_url: String,
+    ch_client: clickhouse::Client,
 }
 
 impl Schedulable for RealTimeStockMonitor {
@@ -46,7 +46,7 @@ impl Schedulable for RealTimeStockMonitor {
                 .map(|record| ch_db::RealtimeStockMarketRecord::from_with_ts(record, ts))
                 .collect::<Vec<_>>();
 
-            let mut inserter = CH_CLIENT.inserter("astock_realtime_data")?;
+            let mut inserter = self.ch_client.inserter("astock_realtime_data")?;
             for row in astock_realtime_data_row {
                 inserter.write(&row)?;
             }

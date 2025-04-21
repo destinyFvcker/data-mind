@@ -31,12 +31,12 @@ impl ToString for ScheduleTaskType {
 }
 
 /// 在服务器启动时开启一些默认启动的调度任务
-pub async fn scheduler_start_up() -> anyhow::Result<()> {
+pub async fn scheduler_start_up(ch_client: clickhouse::Client) -> anyhow::Result<()> {
     // 加入心跳检测任务和清除zombie task任务
     SCHEDULE_TASK_MANAGER.add_task(SchedHeartBeat).await;
     SCHEDULE_TASK_MANAGER.add_task(SchedWaitZombie).await;
 
-    monitor_tasks::start_up_monitor_tasks().await;
+    monitor_tasks::start_up_monitor_tasks(ch_client).await;
 
     let snap_shot = SCHEDULE_TASK_MANAGER.inspect(Some(ScheduleTaskType::All));
     let message = format!("当前调度器内部状态：{:#?}", snap_shot);

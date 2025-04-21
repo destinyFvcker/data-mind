@@ -1,10 +1,8 @@
-use ch::CH_CLIENT;
-use config::CONFIG;
+use config::INIT_CONFIG;
 use ftlog::appender::{Duration, FileAppender, Period};
 use handler::get_app;
 use poem::{Server, listener::TcpListener};
 
-mod ch;
 mod config;
 mod handler;
 mod monitor_tasks;
@@ -21,7 +19,7 @@ async fn main() -> anyhow::Result<()> {
         .time_format(time_format)
         .root(
             FileAppender::builder()
-                .path(format!("{}/server.log", CONFIG.server.logdir))
+                .path(format!("{}/server.log", INIT_CONFIG.server.logdir))
                 .rotate(Period::Day)
                 .expire(Duration::days(7))
                 .build(),
@@ -29,13 +27,25 @@ async fn main() -> anyhow::Result<()> {
         .try_init()
         .expect("logger build or set failed");
 
-    perform_ddl(&CH_CLIENT).await;
-    scheduler::scheduler_start_up().await?;
+    let ch_client = clickhouse::Client::default()
+        .with_url(format!(
+            "http://{}:{}",
+            INIT_CONFIG.clickhouse.host, INIT_CONFIG.clickhouse.port
+        ))
+        .with_user(&INIT_CONFIG.clickhouse.user)
+        .with_password(&INIT_CONFIG.clickhouse.password)
+        .with_database(&INIT_CONFIG.clickhouse.database);
+
+    perform_ddl(&ch_client).await;
+    scheduler::scheduler_start_up(ch_client).await?;
 
     ftlog::info!("Data Mind akshare monitor stated!");
-    Server::new(TcpListener::bind(format!("0.0.0.0:{}", CONFIG.server.port)))
-        .run(get_app())
-        .await?;
+    Server::new(TcpListener::bind(format!(
+        "0.0.0.0:{}",
+        INIT_CONFIG.server.port
+    )))
+    .run(get_app())
+    .await?;
 
     Ok(())
 }
