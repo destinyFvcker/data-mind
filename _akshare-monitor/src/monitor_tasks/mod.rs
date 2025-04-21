@@ -43,8 +43,10 @@ fn in_trade_time(now: &DateTime<Utc>) -> bool {
         || (current_minutes >= AFTERNOON_START && current_minutes < AFTERNOON_END)
 }
 
-pub async fn start_up_monitor_tasks() {
-    SCHEDULE_TASK_MANAGER.add_task(CleanUp).await;
+pub async fn start_up_monitor_tasks(ch_client: clickhouse::Client) {
+    SCHEDULE_TASK_MANAGER
+        .add_task(CleanUp::new(ch_client.clone()))
+        .await;
 
-    a_stock::start_a_stock_tasks().await;
+    a_stock::start_a_stock_tasks(ch_client.clone()).await;
 }
