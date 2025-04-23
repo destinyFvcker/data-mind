@@ -73,3 +73,46 @@ pub struct RealtimeStockMarketRecord {
     #[serde(rename(deserialize = "年初至今涨跌幅"))]
     pub ytd_change: Option<f64>,
 }
+
+/// 东方财富-沪深京 A 股日频率数据; 历史数据按日频率更新, 当日收盘价在收盘后获取
+///
+/// akshare api数据模型
+#[derive(Debug, Deserialize)]
+pub struct StockZhAHist {
+    /// 开盘价
+    #[serde(rename(deserialize = "开盘"))]
+    pub open: f64,
+    /// 收盘价
+    #[serde(rename(deserialize = "收盘"))]
+    pub close: f64,
+    /// 最低价
+    #[serde(rename(deserialize = "最低"))]
+    pub low: f64,
+    /// 最高价
+    #[serde(rename(deserialize = "最高"))]
+    pub high: f64,
+    /// 成交量
+    #[serde(rename(deserialize = "成交量"))]
+    pub trading_volume: f64,
+    /// 成交额
+    #[serde(rename(deserialize = "成交额"))]
+    pub trading_value: f64,
+    /// 振幅
+    #[serde(rename(deserialize = "振幅"))]
+    pub amplitude: f64,
+    /// 换手率
+    #[serde(rename(deserialize = "换手率"))]
+    pub turnover_rate: f64,
+    /// 涨跌幅
+    #[serde(rename(deserialize = "涨跌幅"))]
+    pub change_percentage: f64,
+    /// 涨跌额
+    #[serde(rename(deserialize = "涨跌额"))]
+    pub change_amount: f64,
+    /// 日期
+    #[serde(rename(deserialize = "日期"))]
+    pub date: String,
+    /// 股票代码
+    #[serde(rename(deserialize = "股票代码"))]
+    pub code: String,
+}

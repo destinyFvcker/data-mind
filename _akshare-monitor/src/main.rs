@@ -1,10 +1,12 @@
 use config::INIT_CONFIG;
 use ftlog::appender::{Duration, FileAppender, Period};
 use handler::get_app;
+use init::ExternalResource;
 use poem::{Server, listener::TcpListener};
 
 mod config;
 mod handler;
+mod init;
 mod monitor_tasks;
 mod scheduler;
 
@@ -27,17 +29,10 @@ async fn main() -> anyhow::Result<()> {
         .try_init()
         .expect("logger build or set failed");
 
-    let ch_client = clickhouse::Client::default()
-        .with_url(format!(
-            "http://{}:{}",
-            INIT_CONFIG.clickhouse.host, INIT_CONFIG.clickhouse.port
-        ))
-        .with_user(&INIT_CONFIG.clickhouse.user)
-        .with_password(&INIT_CONFIG.clickhouse.password)
-        .with_database(&INIT_CONFIG.clickhouse.database);
+    let ext_res = ExternalResource::init();
 
-    perform_ddl(&ch_client).await;
-    scheduler::scheduler_start_up(ch_client).await?;
+    perform_ddl(&ext_res.ch_client).await;
+    scheduler::scheduler_start_up(ext_res).await?;
 
     ftlog::info!("Data Mind akshare monitor stated!");
     Server::new(TcpListener::bind(format!(

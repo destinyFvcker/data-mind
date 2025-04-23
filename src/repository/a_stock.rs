@@ -1,8 +1,14 @@
-use chrono::{DateTime, Utc};
+use std::str::FromStr;
+
+use chrono::{DateTime, NaiveDate, Utc};
 use clickhouse::Row;
 use serde::{Deserialize, Serialize};
+use serde_repr::{Deserialize_repr, Serialize_repr};
 
-use crate::models::akshare;
+use crate::{
+    schema::{self, a_stock},
+    utils::splite_date_naive,
+};
 
 // 定义交易状态枚举
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -34,7 +40,7 @@ impl TradingStatus {
     }
 
     /// 判断股票是否停牌
-    pub fn determine_status(data: &akshare::RealtimeStockMarketRecord) -> Self {
+    pub fn determine_status(data: &a_stock::RealtimeStockMarketRecord) -> Self {
         // 如果最新价为None，可能表示停牌
         if data.latest_price.is_none() {
             return TradingStatus::Suspended;
@@ -55,7 +61,7 @@ impl TradingStatus {
 }
 
 /// 与ClickHouse表结构对应的Rust结构体
-#[derive(Debug, Clone, Row, Serialize)]
+#[derive(Debug, Clone, Row, Serialize, Deserialize)]
 pub struct RealtimeStockMarketRecord {
     /// 时间戳，精确到毫秒
     #[serde(with = "clickhouse::serde::chrono::datetime64::millis")]
@@ -112,7 +118,7 @@ pub struct RealtimeStockMarketRecord {
 
 impl RealtimeStockMarketRecord {
     pub fn from_with_ts(
-        source: akshare::RealtimeStockMarketRecord,
+        source: a_stock::RealtimeStockMarketRecord,
         timestamp: DateTime<Utc>,
     ) -> Self {
         // 确定交易状态
@@ -169,6 +175,82 @@ impl RealtimeStockMarketRecord {
             five_minute_change: extract_value(source.five_minute_change, 0.0),
             sixty_day_change: extract_value(source.sixty_day_change, 0.0),
             ytd_change: extract_value(source.ytd_change, 0.0),
+        }
+    }
+}
+
+/// 日频A股数据复权方式
+#[derive(Serialize_repr, Deserialize_repr, PartialEq, Debug)]
+#[repr(u8)]
+pub enum StockAdjustmentType {
+    None,     // 不复权
+    Forward,  // 前复权
+    Backward, // 后复权
+}
+
+impl StockAdjustmentType {
+    pub fn to_str(&self) -> &'static str {
+        match self {
+            Self::None => "",
+            Self::Forward => "qfq",
+            Self::Backward => "hfq",
+        }
+    }
+}
+
+/// 东方财富-沪深京 A 股日频率数据; 历史数据按日频率更新, 当日收盘价在收盘后获取
+///
+/// clickhouse数据模型
+#[derive(Debug, Deserialize, Serialize, Row)]
+pub struct StockZhAHist {
+    /// 股票代码
+    pub code: String,
+    /// 开盘价
+    pub open: f64,
+    /// 收盘价
+    pub close: f64,
+    /// 最低价
+    pub low: f64,
+    /// 最高价
+    pub high: f64,
+    /// 成交量
+    pub trading_volume: f64,
+    /// 成交额
+    pub trading_value: f64,
+    /// 振幅
+    pub amplitude: f64,
+    /// 换手率
+    pub turnover_rate: f64,
+    /// 涨跌幅
+    pub change_percentage: f64,
+    /// 涨跌额
+    pub change_amount: f64,
+    /// 数据产生日期
+    #[serde(with = "clickhouse::serde::chrono::date")]
+    pub date: NaiveDate,
+    /// 复权方式枚举
+    pub adj_type: StockAdjustmentType,
+}
+
+impl StockZhAHist {
+    pub fn from_with_type(value: schema::StockZhAHist, adj_type: StockAdjustmentType) -> Self {
+        let date = NaiveDate::from_str(splite_date_naive(&value.date))
+            .expect("date formet should be ISO 8601");
+
+        Self {
+            code: value.code,
+            open: value.open,
+            close: value.close,
+            low: value.low,
+            high: value.high,
+            trading_volume: value.trading_volume,
+            trading_value: value.trading_value,
+            amplitude: value.amplitude,
+            turnover_rate: value.turnover_rate,
+            change_percentage: value.change_percentage,
+            change_amount: value.change_amount,
+            date,
+            adj_type,
         }
     }
 }
