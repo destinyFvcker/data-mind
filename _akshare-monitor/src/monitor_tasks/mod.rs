@@ -2,15 +2,30 @@ use std::{sync::LazyLock, time::Duration};
 
 use chrono::{DateTime, Timelike, Utc};
 use clean_up::CleanUp;
-use reqwest::{Client, ClientBuilder};
+use reqwest::ClientBuilder;
 
-use crate::scheduler::{CST, SCHEDULE_TASK_MANAGER};
+use crate::{
+    init::ExternalResource,
+    scheduler::{CST, SCHEDULE_TASK_MANAGER},
+};
 
 mod a_stock;
 mod clean_up;
+mod utils;
 
 const AK_TOOLS_BASE_URL: &'static str = "http://127.0.0.1:8080/api/public";
-static HTTP_CLIENT: LazyLock<Client> = LazyLock::new(|| {
+
+#[cfg(test)]
+pub static TEST_CH_CLIENT: LazyLock<clickhouse::Client> = LazyLock::new(|| {
+    clickhouse::Client::default()
+        .with_url("http://127.0.0.1:8123")
+        .with_user("default")
+        .with_password("defaultpassword")
+        .with_database("akshare")
+});
+
+#[cfg(test)]
+pub static TEST_HTTP_CLIENT: LazyLock<reqwest::Client> = LazyLock::new(|| {
     ClientBuilder::new()
         .connect_timeout(Duration::from_secs(5))
         .timeout(Duration::from_secs(20))
@@ -43,10 +58,10 @@ fn in_trade_time(now: &DateTime<Utc>) -> bool {
         || (current_minutes >= AFTERNOON_START && current_minutes < AFTERNOON_END)
 }
 
-pub async fn start_up_monitor_tasks(ch_client: clickhouse::Client) {
+pub async fn start_up_monitor_tasks(ext_res: ExternalResource) {
     SCHEDULE_TASK_MANAGER
-        .add_task(CleanUp::new(ch_client.clone()))
+        .add_task(CleanUp::new(ext_res.ch_client.clone()))
         .await;
 
-    a_stock::start_a_stock_tasks(ch_client.clone()).await;
+    a_stock::start_a_stock_tasks(ext_res.clone()).await;
 }

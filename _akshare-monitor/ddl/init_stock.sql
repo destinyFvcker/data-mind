@@ -1,4 +1,4 @@
--- 创建表结构
+-- A股实时数据表结构
 CREATE TABLE IF NOT EXISTS astock_realtime_data
 (
     -- 时间维度
@@ -50,3 +50,24 @@ ENGINE = MergeTree()
 PARTITION BY toYYYYMMDD(date)  -- 按年月分区
 ORDER BY (code, timestamp)   -- 复合排序键：先按股票代码，再按时间戳
 SETTINGS index_granularity = 8192;
+
+-- 东方财富-沪深京 A 股日频率数据; 历史数据按日频率更新, 当日收盘价在收盘后获取
+CREATE TABLE stock_zh_a_hist
+(
+    `code` LowCardinality(String),
+    `open` Float64,
+    `close` Float64,
+    `low` Float64,
+    `high` Float64,
+    `trading_volume` Float64,
+    `trading_value` Float64,
+    `amplitude` Float64,
+    `turnover_rate` Float64,
+    `change_percentage` Float64,
+    `change_amount` Float64,
+    `date` Date,
+    `adj_type` Enum8('None' = 0, 'Forward' = 1, 'Backward' = 2)
+)
+ENGINE = MergeTree
+PARTITION BY toYYYYMM(date)
+ORDER BY (date, code);
