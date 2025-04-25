@@ -161,6 +161,7 @@ impl TaskManager {
                     // 使用cron表达式创建调度器
                     for next in schedule.upcoming(CST) {
                         ftlog::info!(
+                            target: "scheduler::info",
                             "[meta = {:?}] 下次执行时间: {}",
                             task_meta,
                             next.format("%Y-%m-%d %H:%M")

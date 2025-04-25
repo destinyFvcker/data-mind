@@ -14,7 +14,7 @@ pub async fn get_distinct_code(ch_client: &clickhouse::Client) -> anyhow::Result
 
 #[cfg(test)]
 mod test {
-    use crate::monitor_tasks::TEST_CH_CLIENT;
+    use crate::tasks::TEST_CH_CLIENT;
 
     use super::*;
 

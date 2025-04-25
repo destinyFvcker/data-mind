@@ -9,8 +9,8 @@ use strum::IntoEnumIterator;
 
 use crate::{
     init::ExternalResource,
-    monitor_tasks::utils::get_distinct_code,
     scheduler::{CST, SCHEDULE_TASK_MANAGER, Schedulable, ScheduleTaskType, TaskMeta},
+    tasks::utils::get_distinct_code,
 };
 use data_mind::{
     repository::{self, StockAdjustmentType},
@@ -29,20 +29,20 @@ pub(super) async fn start_a_stock_tasks(ext_res: ExternalResource) {
 }
 
 /// 收集东方财富网-沪深京 A 股-实时行情数据
-struct RealTimeStockMonitor {
+pub(super) struct RealTimeStockMonitor {
     data_url: String,
     ext_res: ExternalResource,
 }
 
 /// 收集东方财富-沪深京 A 股日频率数据;
 /// 历史数据按日频率更新, 当日收盘价请在收盘后获取
-struct StockZhAHistMonitor {
+pub(super) struct StockZhAHistMonitor {
     data_url: String,
     ext_res: ExternalResource,
 }
 
 impl RealTimeStockMonitor {
-    async fn collect_data(&self, ts: chrono::DateTime<Utc>) -> anyhow::Result<()> {
+    pub async fn collect_data(&self, ts: chrono::DateTime<Utc>) -> anyhow::Result<()> {
         let result: Vec<schema::RealtimeStockMarketRecord> = self
             .ext_res
             .http_client
@@ -117,7 +117,7 @@ impl StockZhAHistMonitor {
     }
 
     /// 收集东方财富-沪深京 A 股日频率数据
-    async fn collect_data(&self) -> anyhow::Result<()> {
+    pub async fn collect_data(&self) -> anyhow::Result<()> {
         let codes = get_distinct_code(&self.ext_res.ch_client).await?;
         println!("codes length = {}", codes.len());
         let now_date = Utc::now().with_timezone(&CST);
@@ -157,49 +157,6 @@ impl StockZhAHistMonitor {
     }
 }
 
-impl Schedulable for StockZhAHistMonitor {
-    fn gen_meta(&self) -> TaskMeta {
-        TaskMeta {
-            name: "stock_zh_a_hist".to_owned(),
-            desc:
-                "收集东方财富-沪深京 A 股日频率数据; 历史数据按日频率更新, 当日收盘价请在收盘后获取"
-                    .to_owned(),
-            cron_expr: "0 30 15 * * MON-FRI".to_owned(),
-            tag: Some(ScheduleTaskType::AStock),
-        }
-    }
-
-    fn execute(
-        self: std::sync::Arc<Self>,
-    ) -> Box<dyn Future<Output = anyhow::Result<()>> + Send + 'static> {
-        todo!()
-    }
-}
-
-impl Schedulable for RealTimeStockMonitor {
-    fn gen_meta(&self) -> crate::scheduler::TaskMeta {
-        TaskMeta {
-            name: "stock_zh_a_spot_em".to_owned(),
-            desc: "东方财富网-沪深京 A 股-实时行情数据".to_owned(),
-            cron_expr: TRADE_TIME_CRON.to_owned(),
-            tag: Some(ScheduleTaskType::AStock),
-        }
-    }
-
-    fn execute(
-        self: std::sync::Arc<Self>,
-    ) -> Box<dyn Future<Output = anyhow::Result<()>> + Send + 'static> {
-        Box::new(async move {
-            let ts = Utc::now();
-            if !in_trade_time(&ts) {
-                return Ok(());
-            }
-            self.collect_data(ts).await?;
-            Ok(())
-        })
-    }
-}
-
 #[cfg(test)]
 mod test {
     use std::str::FromStr;
@@ -211,10 +168,8 @@ mod test {
 
     use crate::{
         init::ExternalResource,
-        monitor_tasks::{
-            TEST_CH_CLIENT, TEST_HTTP_CLIENT, a_stock::StockZhAHistMonitor, with_base_url,
-        },
         scheduler::CST,
+        tasks::{TEST_CH_CLIENT, TEST_HTTP_CLIENT, a_stock::StockZhAHistMonitor, with_base_url},
     };
 
     use super::RealTimeStockMonitor;
