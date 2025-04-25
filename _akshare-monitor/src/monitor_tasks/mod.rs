@@ -1,3 +1,4 @@
+#![allow(unused)]
 use std::{sync::LazyLock, time::Duration};
 
 use chrono::{DateTime, Timelike, Utc};
@@ -27,8 +28,8 @@ pub static TEST_CH_CLIENT: LazyLock<clickhouse::Client> = LazyLock::new(|| {
 #[cfg(test)]
 pub static TEST_HTTP_CLIENT: LazyLock<reqwest::Client> = LazyLock::new(|| {
     ClientBuilder::new()
-        .connect_timeout(Duration::from_secs(5))
-        .timeout(Duration::from_secs(20))
+        .connect_timeout(Duration::from_secs(10))
+        .timeout(Duration::from_secs(40))
         .build()
         .unwrap()
 });

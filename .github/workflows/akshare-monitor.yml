@@ -47,7 +47,7 @@ jobs:
                   SSH_PRIVATE_KEY: ${{ secrets.ALIYUN_SSH_KEY }}
                   REMOTE_HOST: ${{ secrets.ALIYUN_HOST }}
                   REMOTE_USER: ${{ secrets.ALIYUN_USER }}
-                  ARGS: "-avzr --delete --mkpath"
+                  ARGS: "-avzr --delete --mkpath --exclude='PID'"
                   SOURCE: "./deploy/"
                   TARGET: ${{ env.BASE_PATH }}${{ env.APP_NAME }}/
             - name: restart service
