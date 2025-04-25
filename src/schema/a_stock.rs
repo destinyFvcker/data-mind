@@ -1,3 +1,4 @@
+//! AKShare 股票数据
 use serde::{Deserialize, Serialize};
 
 /// Real-time market data 数据来源为东方财经

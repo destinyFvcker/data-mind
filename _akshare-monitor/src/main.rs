@@ -1,5 +1,8 @@
 use config::INIT_CONFIG;
-use ftlog::appender::{Duration, FileAppender, Period};
+use ftlog::{
+    LevelFilter,
+    appender::{Duration, FileAppender, Period},
+};
 use handler::get_app;
 use init::ExternalResource;
 use poem::{Server, listener::TcpListener};
@@ -7,8 +10,8 @@ use poem::{Server, listener::TcpListener};
 mod config;
 mod handler;
 mod init;
-mod monitor_tasks;
 mod scheduler;
+mod tasks;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
@@ -17,6 +20,14 @@ async fn main() -> anyhow::Result<()> {
     )
     .unwrap();
     let _guard = ftlog::builder()
+        .filter("scheduler::info", "scheduler", LevelFilter::Info)
+        .appender(
+            "scheduler",
+            FileAppender::rotate(
+                format!("{}/scheduler.log", INIT_CONFIG.server.logdir),
+                Period::Day,
+            ),
+        )
         .max_log_level(ftlog::LevelFilter::Info)
         .time_format(time_format)
         .root(
@@ -64,8 +75,6 @@ async fn perform_ddl(ch_client: &clickhouse::Client) {
             .unwrap_or("".to_string())
     };
 
-    let stock_ddl = cleanup(include_str!("../ddl/init_stock.sql"));
-
     async fn query_ddl_by_line(ddl: String, ch_client: &clickhouse::Client) {
         let ddl: Vec<String> = ddl.split(";").map(|s| s.to_string()).collect();
         for sql in ddl.into_iter() {
@@ -76,5 +85,13 @@ async fn perform_ddl(ch_client: &clickhouse::Client) {
         }
     }
 
-    query_ddl_by_line(stock_ddl, ch_client).await;
+    let ddls = [
+        include_str!("../ddl/init_stock.sql"),
+        include_str!("../ddl/init_index.sql"),
+    ];
+
+    for ddl in ddls {
+        let stock_ddl = cleanup(ddl);
+        query_ddl_by_line(stock_ddl, ch_client).await;
+    }
 }

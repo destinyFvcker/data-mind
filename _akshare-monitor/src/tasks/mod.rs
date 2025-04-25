@@ -1,8 +1,10 @@
+//! 收集数据调度任务模块
+
+// 下面这些LazyLock模块会显示unuse，因为检查不到TEST_CH_CLIENT的使用
 #![allow(unused)]
 use std::{sync::LazyLock, time::Duration};
 
 use chrono::{DateTime, Timelike, Utc};
-use clean_up::CleanUp;
 use reqwest::ClientBuilder;
 
 use crate::{
@@ -10,8 +12,10 @@ use crate::{
     scheduler::{CST, SCHEDULE_TASK_MANAGER},
 };
 
+mod a_index;
 mod a_stock;
 mod clean_up;
+mod s_impls;
 mod utils;
 
 const AK_TOOLS_BASE_URL: &'static str = "http://127.0.0.1:8080/api/public";
@@ -61,8 +65,9 @@ fn in_trade_time(now: &DateTime<Utc>) -> bool {
 
 pub async fn start_up_monitor_tasks(ext_res: ExternalResource) {
     SCHEDULE_TASK_MANAGER
-        .add_task(CleanUp::new(ext_res.ch_client.clone()))
+        .add_task(clean_up::CleanUp::new(ext_res.ch_client.clone()))
         .await;
 
     a_stock::start_a_stock_tasks(ext_res.clone()).await;
+    a_index::start_a_index_tasks(ext_res.clone()).await;
 }

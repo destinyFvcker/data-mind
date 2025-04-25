@@ -19,5 +19,6 @@ time.workspace = true
 reqwest.workspace = true
 strum.workspace = true
 futures.workspace = true
+backoff.workspace = true
 cron = "0.15.0"
 data_mind = { path = ".." }

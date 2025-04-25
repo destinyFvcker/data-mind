@@ -52,7 +52,7 @@ ORDER BY (code, timestamp)   -- 复合排序键：先按股票代码，再按时
 SETTINGS index_granularity = 8192;
 
 -- 东方财富-沪深京 A 股日频率数据; 历史数据按日频率更新, 当日收盘价在收盘后获取
-CREATE TABLE stock_zh_a_hist
+CREATE TABLE IF NOT EXISTS stock_zh_a_hist
 (
     `code` LowCardinality(String),
     `open` Float64,
@@ -66,8 +66,9 @@ CREATE TABLE stock_zh_a_hist
     `change_percentage` Float64,
     `change_amount` Float64,
     `date` Date,
+    -- `ts` DateTime64(3, 'Asia/Shanghai'),
     `adj_type` Enum8('None' = 0, 'Forward' = 1, 'Backward' = 2)
 )
-ENGINE = MergeTree
+ENGINE = ReplacingMergeTree
 PARTITION BY toYYYYMM(date)
 ORDER BY (date, code);
