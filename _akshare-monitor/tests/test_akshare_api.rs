@@ -21,11 +21,11 @@ async fn test_stock_zh_a_hist() {
     let res = HTTP_CLIENT
         .get(with_base_url("/stock_zh_a_hist"))
         .query(&[
-            ("symbol", "603777"),
+            ("symbol", "000088"),
             ("period", "daily"),
-            ("start_date", "00000000"),
-            ("end_date", "20250422"),
-            ("adjust", "hfq"),
+            ("start_date", "20250418"),
+            ("end_date", "20250424"),
+            ("adjust", ""),
         ])
         .send()
         .await

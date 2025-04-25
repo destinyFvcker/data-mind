@@ -1,7 +1,11 @@
 /// 从A股实时数据表之中获取所有的股票id
 pub async fn get_distinct_code(ch_client: &clickhouse::Client) -> anyhow::Result<Vec<String>> {
     let res = ch_client
-        .query("SELECT Distinct(code) FROM astock_realtime_data")
+        .query(
+            "SELECT DISTINCT code \
+            FROM astock_realtime_data \
+            WHERE is_suspended = false",
+        )
         .fetch_all::<String>()
         .await?;
 

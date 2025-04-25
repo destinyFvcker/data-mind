@@ -4,6 +4,7 @@ use chrono::{DateTime, NaiveDate, Utc};
 use clickhouse::Row;
 use serde::{Deserialize, Serialize};
 use serde_repr::{Deserialize_repr, Serialize_repr};
+use strum::EnumIter;
 
 use crate::{
     schema::{self, a_stock},
@@ -180,7 +181,7 @@ impl RealtimeStockMarketRecord {
 }
 
 /// 日频A股数据复权方式
-#[derive(Serialize_repr, Deserialize_repr, PartialEq, Debug)]
+#[derive(Serialize_repr, Deserialize_repr, PartialEq, Debug, EnumIter, Clone, Copy)]
 #[repr(u8)]
 pub enum StockAdjustmentType {
     None,     // 不复权

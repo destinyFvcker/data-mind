@@ -3,7 +3,6 @@
 mod manager;
 use std::sync::Arc;
 
-use linkme::distributed_slice;
 pub use manager::*;
 use serde::{Deserialize, Serialize};
 

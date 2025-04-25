@@ -1,9 +1,16 @@
+use std::{pin::Pin, sync::Arc};
+
 use chrono::Utc;
+use futures::{
+    FutureExt, StreamExt, TryStreamExt,
+    stream::{self, FuturesUnordered},
+};
+use strum::IntoEnumIterator;
 
 use crate::{
     init::ExternalResource,
     monitor_tasks::utils::get_distinct_code,
-    scheduler::{SCHEDULE_TASK_MANAGER, Schedulable, ScheduleTaskType, TaskMeta},
+    scheduler::{CST, SCHEDULE_TASK_MANAGER, Schedulable, ScheduleTaskType, TaskMeta},
 };
 use data_mind::{
     repository::{self, StockAdjustmentType},
@@ -61,55 +68,92 @@ impl RealTimeStockMonitor {
 }
 
 impl StockZhAHistMonitor {
-    /// 从akshare请求数据，注意date_str是一个 yyyymmdd 格式的时间字符串
+    /// 从akshare请求数据，返回clickhouse schema格式的Vec，
+    /// 包括对应code对应日期之中：`不复权 | 前复权 | 后复权`的整体数据
+    /// 注意date_str是一个 yyyymmdd 格式的时间字符串
     async fn req_data(
         &self,
-        code: &str,
-        adj_type: StockAdjustmentType,
-        date_str: &str,
-    ) -> anyhow::Result<Vec<schema::StockZhAHist>> {
-        let api_data: Vec<schema::StockZhAHist> = self
-            .ext_res
-            .http_client
-            .get(&self.data_url)
-            .query(&[
-                ("symbol", code),
-                ("period", "daily"),
-                ("start_date", "00000000"),
-                ("end_date", date_str),
-                ("adjust", adj_type.to_str()),
-            ])
-            .send()
-            .await?
-            .json()
-            .await?;
+        code: String,
+        start_date: u32,
+        end_date: u32,
+    ) -> anyhow::Result<Vec<repository::StockZhAHist>> {
+        let start_date = start_date.to_string();
+        let end_date = end_date.to_string();
 
-        Ok(api_data)
+        let hist_data: Vec<Vec<repository::StockZhAHist>> =
+            stream::iter(StockAdjustmentType::iter())
+                .then(async |adj_type| {
+                    let res = self
+                        .ext_res
+                        .http_client
+                        .get(&self.data_url)
+                        .query(&[
+                            ("symbol", code.as_str()),
+                            ("period", "daily"),
+                            ("start_date", start_date.as_str()),
+                            ("end_date", end_date.as_str()),
+                            ("adjust", adj_type.to_str()),
+                        ])
+                        .send()
+                        .await
+                        .inspect_err(|err| println!("error await send = {:?}", err))?
+                        .error_for_status()?;
+
+                    let api_data: Vec<schema::StockZhAHist> = res
+                        .json()
+                        .await
+                        .inspect_err(|err| println!("error deser json data = {:?}", err))?;
+                    let ch_data = api_data
+                        .into_iter()
+                        .map(|value| repository::StockZhAHist::from_with_type(value, adj_type))
+                        .collect::<Vec<repository::StockZhAHist>>();
+
+                    Ok::<Vec<data_mind::repository::StockZhAHist>, anyhow::Error>(ch_data)
+                })
+                .try_collect()
+                .await?;
+
+        Ok(hist_data.into_iter().flatten().collect())
     }
 
     /// 收集东方财富-沪深京 A 股日频率数据
     async fn collect_data(&self) -> anyhow::Result<()> {
         let codes = get_distinct_code(&self.ext_res.ch_client).await?;
+        println!("codes length = {}", codes.len());
+        let now_date = Utc::now().with_timezone(&CST);
+        let start_date = now_date - chrono::Duration::days(7);
 
-        // let futs = codes
-        //     .into_iter()
-        //     .map(|code| async {
-        //         let api_data: Vec<schema::StockZhAHist> = self
-        //             .ext_res
-        //             .http_client
-        //             .get(&self.data_url)
-        //             .send()
-        //             .await?
-        //             .json()
-        //             .await?;
+        let end = now_date
+            .format("%Y%m%d")
+            .to_string()
+            .parse::<u32>()
+            .unwrap();
+        let start = start_date
+            .format("%Y%m%d")
+            .to_string()
+            .parse::<u32>()
+            .unwrap();
 
-        //         return api_data;
-        //     })
-        //     .collect::<Vec<_>>();
+        let hist_data: Vec<Vec<repository::StockZhAHist>> = stream::iter(codes)
+            .take(3)
+            .map(|code| self.req_data(code, start, end))
+            .buffer_unordered(10)
+            .try_collect()
+            .await?;
 
-        // let stock_zh_a_hist: Vec<repository::StockZhAHist>
+        let hist_data = hist_data.into_iter().flatten().collect::<Vec<_>>();
 
-        todo!()
+        let mut inserter = self
+            .ext_res
+            .ch_client
+            .inserter("stock_zh_a_hist")?
+            .with_option("insert_deduplicate", "1");
+        for row in hist_data {
+            inserter.write(&row)?;
+        }
+        inserter.end().await?;
+
+        Ok(())
     }
 }
 
@@ -161,10 +205,15 @@ mod test {
     use std::str::FromStr;
 
     use chrono::Utc;
+    use data_mind::repository::StockAdjustmentType;
+    use futures::{StreamExt, stream};
+    use strum::IntoEnumIterator;
 
     use crate::{
         init::ExternalResource,
-        monitor_tasks::{TEST_CH_CLIENT, TEST_HTTP_CLIENT, with_base_url},
+        monitor_tasks::{
+            TEST_CH_CLIENT, TEST_HTTP_CLIENT, a_stock::StockZhAHistMonitor, with_base_url,
+        },
         scheduler::CST,
     };
 
@@ -172,6 +221,10 @@ mod test {
 
     #[test]
     fn test_cron() {
+        println!(
+            "{:?}",
+            Utc::now().with_timezone(&CST).format("%Y%m%d").to_string()
+        );
         let schedule = cron::Schedule::from_str("0 0 17 * * MON-FRI").unwrap();
         for next in schedule.upcoming(CST).take(10) {
             println!("{:?}", next);
@@ -193,5 +246,61 @@ mod test {
             .collect_data(Utc::now())
             .await
             .unwrap();
+    }
+
+    #[tokio::test]
+    async fn test_stock_zh_a_hist_collect_data() {
+        let ext_res = ExternalResource {
+            ch_client: TEST_CH_CLIENT.clone(),
+            http_client: TEST_HTTP_CLIENT.clone(),
+        };
+        let stock_zh_a_hist_monitor = StockZhAHistMonitor {
+            data_url: with_base_url("/stock_zh_a_hist"),
+            ext_res,
+        };
+
+        stock_zh_a_hist_monitor.collect_data().await.unwrap();
+    }
+
+    #[tokio::test]
+    async fn test_steam1() {
+        let stream = stream::iter(StockAdjustmentType::iter())
+            .collect::<Vec<StockAdjustmentType>>()
+            .await;
+
+        println!("{:?}", stream);
+    }
+
+    #[tokio::test]
+    async fn test_try_fold() {
+        use futures::channel::mpsc;
+        use futures::stream::{StreamExt, TryStreamExt};
+        use std::thread;
+
+        let (tx1, rx1) = mpsc::unbounded();
+        let (tx2, rx2) = mpsc::unbounded();
+        let (tx3, rx3) = mpsc::unbounded();
+
+        thread::spawn(move || {
+            tx1.unbounded_send(Ok(1)).unwrap();
+        });
+        thread::spawn(move || {
+            tx2.unbounded_send(Ok(2)).unwrap();
+            tx2.unbounded_send(Err(3)).unwrap();
+            tx2.unbounded_send(Ok(4)).unwrap();
+        });
+        thread::spawn(move || {
+            tx3.unbounded_send(Ok(rx1)).unwrap();
+            tx3.unbounded_send(Ok(rx2)).unwrap();
+            tx3.unbounded_send(Err(5)).unwrap();
+        });
+
+        let mut stream = rx3.try_flatten();
+        assert_eq!(stream.next().await, Some(Ok(1)));
+        assert_eq!(stream.next().await, Some(Ok(2)));
+        assert_eq!(stream.next().await, Some(Err(3)));
+        assert_eq!(stream.next().await, Some(Ok(4)));
+        assert_eq!(stream.next().await, Some(Err(5)));
+        assert_eq!(stream.next().await, None);
     }
 }
