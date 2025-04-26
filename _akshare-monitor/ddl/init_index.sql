@@ -10,5 +10,17 @@ CREATE TABLE IF NOT EXISTS stock_zh_index_daily
     `date` Date,
     `ts` DateTime64(3, 'Asia/Shanghai')
 )
-ENGINE = ReplacingMergeTree
+ENGINE = ReplacingMergeTree(ts)
 ORDER BY (date, code);
+
+CREATE TABLE IF NOT EXISTS index_option_50etf_qvix
+(
+    `open` Float64,
+    `close` Float64,
+    `high` Float64,
+    `low` Float64,
+    `date` Date,
+    `ts` DateTime64(3, 'Asia/Shanghai')
+)
+ENGINE = ReplacingMergeTree(ts)
+ORDER BY date;

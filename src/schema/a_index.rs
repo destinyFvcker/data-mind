@@ -60,3 +60,20 @@ pub struct StockZhIndexDaily {
     /// 交易量
     pub volume: f64,
 }
+
+/// 50ETF 期权波动率指数
+///
+/// 50ETF 期权波动率指数 QVIX; 又称中国版的恐慌指数
+#[derive(Debug, Deserialize)]
+pub struct IndexOption50EtfQvix {
+    /// 时间戳
+    pub date: String,
+    /// 开盘
+    pub open: Option<f64>,
+    /// 收盘
+    pub high: Option<f64>,
+    /// 最高
+    pub low: Option<f64>,
+    /// 最低
+    pub close: Option<f64>,
+}

@@ -13,9 +13,17 @@ pub async fn start_a_index_tasks(ext_res: ExternalResource) {
         data_table: "stock_zh_index_daily".to_string(),
         ext_res: ext_res.clone(),
     };
-
     SCHEDULE_TASK_MANAGER
         .add_task(stock_zh_index_daily_monitor)
+        .await;
+
+    let index_option_50etf_qvix = IndexOption50EtfQvixMonitor {
+        data_url: with_base_url("/index_option_50etf_qvix"),
+        data_table: "index_option_50etf_qvix".to_owned(),
+        ext_res: ext_res.clone(),
+    };
+    SCHEDULE_TASK_MANAGER
+        .add_task(index_option_50etf_qvix)
         .await;
 }
 
@@ -99,6 +107,52 @@ impl StockZhIndexDailyMonitor {
     }
 }
 
+// --------------
+
+pub struct IndexOption50EtfQvixMonitor {
+    data_url: String,
+    data_table: String,
+    ext_res: ExternalResource,
+}
+
+impl IndexOption50EtfQvixMonitor {
+    async fn get_data(&self) -> anyhow::Result<Vec<Option<repository::IndexOption50EtfQvix>>> {
+        let api_data: Vec<schema::IndexOption50EtfQvix> = self
+            .ext_res
+            .http_client
+            .get(&self.data_url)
+            .send()
+            .await?
+            .error_for_status()?
+            .json()
+            .await?;
+
+        let now = Utc::now();
+        let repo_data = api_data
+            .into_iter()
+            .map(|data| repository::IndexOption50EtfQvix::from_with_ts(data, now))
+            .collect::<Vec<_>>();
+
+        Ok(repo_data)
+    }
+
+    pub async fn collect_data(&self) -> anyhow::Result<()> {
+        let rows_with_none = self.get_data().await?;
+        let rows = rows_with_none
+            .into_iter()
+            .filter_map(|row| row)
+            .collect::<Vec<_>>();
+
+        let mut inserter = self.ext_res.ch_client.inserter(&self.data_table)?;
+        for row in rows {
+            inserter.write(&row)?;
+        }
+        inserter.end().await?;
+
+        Ok(())
+    }
+}
+
 #[cfg(test)]
 mod test {
     use super::*;
@@ -122,5 +176,21 @@ mod test {
         };
 
         stock_zh_index_daily_monitor.collect_data().await.unwrap()
+    }
+
+    #[tokio::test]
+    async fn test_index_option_50etf_qvix_monitor() {
+        let ext_res = ExternalResource {
+            ch_client: TEST_CH_CLIENT.clone(),
+            http_client: TEST_HTTP_CLIENT.clone(),
+        };
+
+        let index_option_50etf_qvix = IndexOption50EtfQvixMonitor {
+            data_url: with_base_url("/index_option_50etf_qvix"),
+            data_table: "index_option_50etf_qvix".to_owned(),
+            ext_res,
+        };
+
+        index_option_50etf_qvix.collect_data().await.unwrap()
     }
 }
