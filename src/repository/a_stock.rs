@@ -354,3 +354,76 @@ impl StockHsgtHistEm {
         }
     }
 }
+
+// --------------------------------------------------------------------------
+
+#[derive(Debug, Serialize, Deserialize, Row)]
+pub struct StockZtPoolEm {
+    /// 股票代码
+    pub code: String,
+    /// 股票名称
+    pub name: String,
+    /// 封板所需资金（单位：元）
+    pub lockup_funds: f64,
+    /// 序号
+    pub serial_number: u32,
+    /// 总市值（单位：元）
+    pub total_market_value: f64,
+    /// 成交额（单位：元）
+    pub turnover: f64,
+    /// 所属行业
+    pub industry: String,
+    /// 换手率（百分比）
+    pub turnover_rate: f64,
+    /// 最后封板时间（格式：HHMMSS）
+    pub last_lockup_time: String,
+    /// 最新价格
+    pub latest_price: f64,
+    /// 流通市值（单位：元）
+    pub circulating_market_value: f64,
+    /// 涨停统计（例如 "1/1"）
+    pub limit_up_statistics: String,
+    /// 涨跌幅（百分比）
+    pub price_change_percentage: f64,
+    /// 炸板次数（封板失败次数）
+    pub failed_lockup_count: u32,
+    /// 连续涨停板数量
+    pub consecutive_limit_ups: u32,
+    /// 首次封板时间（格式：HHMMSS）
+    pub first_lockup_time: String,
+    /// 数据生成时间
+    #[serde(with = "clickhouse::serde::chrono::date")]
+    pub date: NaiveDate,
+    /// 数据收集时间
+    #[serde(with = "clickhouse::serde::chrono::datetime64::millis")]
+    pub ts: DateTime<Utc>,
+}
+
+impl StockZtPoolEm {
+    pub fn from_with_time(
+        value: schema::akshare::StockZtPoolEm,
+        date: NaiveDate,
+        ts: DateTime<Utc>,
+    ) -> Self {
+        Self {
+            code: value.code,
+            name: value.name,
+            lockup_funds: value.lockup_funds,
+            serial_number: value.serial_number,
+            total_market_value: value.total_market_value,
+            turnover: value.turnover,
+            industry: value.industry,
+            turnover_rate: value.turnover_rate,
+            last_lockup_time: value.last_lockup_time,
+            latest_price: value.latest_price,
+            circulating_market_value: value.circulating_market_value,
+            limit_up_statistics: value.limit_up_statistics,
+            price_change_percentage: value.price_change_percentage,
+            failed_lockup_count: value.failed_lockup_count,
+            consecutive_limit_ups: value.consecutive_limit_ups,
+            first_lockup_time: value.first_lockup_time,
+            date,
+            ts,
+        }
+    }
+}

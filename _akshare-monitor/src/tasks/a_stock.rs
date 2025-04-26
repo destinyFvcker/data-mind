@@ -1,6 +1,6 @@
 use std::{pin::Pin, sync::Arc};
 
-use chrono::Utc;
+use chrono::{Duration, Local, NaiveDate, Utc};
 use futures::{
     FutureExt, StreamExt, TryStreamExt,
     stream::{self, FuturesUnordered},
@@ -34,6 +34,15 @@ pub(super) async fn start_a_stock_tasks(ext_res: ExternalResource) {
     };
     SCHEDULE_TASK_MANAGER
         .add_task(stock_hsgt_hist_em_monitor)
+        .await;
+
+    let stock_zt_pool_em_monitor = StockZtPoolEmMonitor {
+        data_url: with_base_url("/stock_zt_pool_em"),
+        data_table: "stock_zt_pool_em".to_owned(),
+        ext_res: ext_res.clone(),
+    };
+    SCHEDULE_TASK_MANAGER
+        .add_task(stock_zt_pool_em_monitor)
         .await;
 }
 
@@ -223,11 +232,78 @@ impl StockHsgtHistEmMonitor {
     }
 }
 
+// -----------------------------------------------------------------------------------------
+
+pub struct StockZtPoolEmMonitor {
+    data_url: String,
+    data_table: String,
+    ext_res: ExternalResource,
+}
+
+impl StockZtPoolEmMonitor {
+    /// 获取某一天的所有数据
+    async fn get_date_data(
+        &self,
+        date: NaiveDate,
+    ) -> anyhow::Result<Vec<repository::StockZtPoolEm>> {
+        let formatted = date.format("%Y%m%d").to_string();
+        let api_data: Vec<schema::akshare::StockZtPoolEm> = self
+            .ext_res
+            .http_client
+            .get(&self.data_url)
+            .query(&[("date", formatted)])
+            .send()
+            .await?
+            .error_for_status()?
+            .json()
+            .await?;
+
+        let now = Utc::now();
+
+        Ok(api_data
+            .into_iter()
+            .map(|value| repository::StockZtPoolEm::from_with_time(value, date, now))
+            .collect())
+    }
+
+    /// 获取过去两周的所有涨跌停板数据
+    async fn get_api_data(&self) -> anyhow::Result<Vec<repository::StockZtPoolEm>> {
+        // 获取当前本地时间
+        let now = Local::now().date_naive();
+        // 计算14天前的日期
+        let start_date = now - Duration::weeks(2);
+        let dates = (0..=14)
+            .map(|diff| start_date + Duration::days(diff))
+            .collect::<Vec<_>>();
+
+        let api_data: Vec<Vec<repository::StockZtPoolEm>> = stream::iter(dates)
+            .map(|date| self.get_date_data(date))
+            .buffer_unordered(8)
+            .try_collect()
+            .await?;
+
+        Ok(api_data.into_iter().flatten().collect())
+    }
+
+    /// 收集数据到clickhouse
+    pub async fn collect_data(&self) -> anyhow::Result<()> {
+        let rows = self.get_api_data().await?;
+
+        let mut inserter = self.ext_res.ch_client.inserter(&self.data_table)?;
+        for row in rows {
+            inserter.write(&row)?;
+        }
+        inserter.end().await?;
+
+        Ok(())
+    }
+}
+
 #[cfg(test)]
 mod test {
     use std::str::FromStr;
 
-    use chrono::Utc;
+    use chrono::{Duration, Local, Utc};
     use data_mind::repository::StockAdjustmentType;
     use futures::{StreamExt, stream};
     use strum::IntoEnumIterator;
@@ -297,6 +373,38 @@ mod test {
         };
 
         stock_hsgt_hist_em_monitor.collect_data().await.unwrap();
+    }
+
+    #[tokio::test]
+    async fn test_stock_zt_pool_em_monitor() {
+        let ext_res = ExternalResource {
+            ch_client: TEST_CH_CLIENT.clone(),
+            http_client: TEST_HTTP_CLIENT.clone(),
+        };
+
+        let stock_zt_pool_em_monitor = StockZtPoolEmMonitor {
+            data_url: with_base_url("/stock_zt_pool_em"),
+            data_table: "stock_zt_pool_em".to_owned(),
+            ext_res,
+        };
+
+        stock_zt_pool_em_monitor.collect_data().await.unwrap();
+    }
+
+    #[test]
+    fn test_past_week() {
+        // 获取当前本地时间
+        let now = Local::now().date_naive();
+
+        // 计算7天前的日期
+        let start_date = now - Duration::weeks(2);
+
+        // 从7天前到今天，每天循环
+        for i in 0..=14 {
+            let date = start_date + Duration::days(i);
+            let formatted = date.format("%Y%m%d").to_string();
+            println!("{}", formatted);
+        }
     }
 
     // #[tokio::test]

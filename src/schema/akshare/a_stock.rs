@@ -164,3 +164,56 @@ pub struct StockHsgtHistEm {
     #[serde(rename(deserialize = "领涨股-涨跌幅"))]
     pub leading_stock_change_percent: f64,
 }
+
+/// 股票信息结构体
+#[derive(Debug, Serialize, Deserialize)]
+pub struct StockZtPoolEm {
+    /// 股票代码
+    #[serde(rename(deserialize = "代码"))]
+    pub code: String,
+    /// 股票名称
+    #[serde(rename(deserialize = "名称"))]
+    pub name: String,
+    /// 封板所需资金（单位：元）
+    #[serde(rename(deserialize = "封板资金"))]
+    pub lockup_funds: f64,
+    /// 序号
+    #[serde(rename(deserialize = "序号"))]
+    pub serial_number: u32,
+    /// 总市值（单位：元）
+    #[serde(rename(deserialize = "总市值"))]
+    pub total_market_value: f64,
+    /// 成交额（单位：元）
+    #[serde(rename(deserialize = "成交额"))]
+    pub turnover: f64,
+    /// 所属行业
+    #[serde(rename(deserialize = "所属行业"))]
+    pub industry: String,
+    /// 换手率（百分比）
+    #[serde(rename(deserialize = "换手率"))]
+    pub turnover_rate: f64,
+    /// 最后封板时间（格式：HHMMSS）
+    #[serde(rename(deserialize = "最后封板时间"))]
+    pub last_lockup_time: String,
+    /// 最新价格
+    #[serde(rename(deserialize = "最新价"))]
+    pub latest_price: f64,
+    /// 流通市值（单位：元）
+    #[serde(rename(deserialize = "流通市值"))]
+    pub circulating_market_value: f64,
+    /// 涨停统计（例如 "1/1"）
+    #[serde(rename(deserialize = "涨停统计"))]
+    pub limit_up_statistics: String,
+    /// 涨跌幅（百分比）
+    #[serde(rename(deserialize = "涨跌幅"))]
+    pub price_change_percentage: f64,
+    /// 炸板次数（封板失败次数）
+    #[serde(rename(deserialize = "炸板次数"))]
+    pub failed_lockup_count: u32,
+    /// 连续涨停板数量
+    #[serde(rename(deserialize = "连板数"))]
+    pub consecutive_limit_ups: u32,
+    /// 首次封板时间（格式：HHMMSS）
+    #[serde(rename(deserialize = "首次封板时间"))]
+    pub first_lockup_time: String,
+}
