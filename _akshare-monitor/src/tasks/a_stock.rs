@@ -13,7 +13,7 @@ use crate::{
     tasks::utils::get_distinct_code,
 };
 use data_mind::{
-    repository::{self, StockAdjustmentType},
+    repository::{self, FlowDirection, StockAdjustmentType},
     schema,
 };
 
@@ -26,6 +26,15 @@ pub(super) async fn start_a_stock_tasks(ext_res: ExternalResource) {
         ext_res: ext_res.clone(),
     };
     SCHEDULE_TASK_MANAGER.add_task(realtime_stock_monitor).await;
+
+    let stock_hsgt_hist_em_monitor = StockHsgtHistEmMonitor {
+        data_url: with_base_url("/stock_hsgt_hist_em"),
+        data_table: "stock_hsgt_hist_em".to_owned(),
+        ext_res: ext_res.clone(),
+    };
+    SCHEDULE_TASK_MANAGER
+        .add_task(stock_hsgt_hist_em_monitor)
+        .await;
 }
 
 /// 收集东方财富网-沪深京 A 股-实时行情数据
@@ -34,16 +43,9 @@ pub(super) struct RealTimeStockMonitor {
     ext_res: ExternalResource,
 }
 
-/// 收集东方财富-沪深京 A 股日频率数据;
-/// 历史数据按日频率更新, 当日收盘价请在收盘后获取
-pub(super) struct StockZhAHistMonitor {
-    data_url: String,
-    ext_res: ExternalResource,
-}
-
 impl RealTimeStockMonitor {
     pub async fn collect_data(&self, ts: chrono::DateTime<Utc>) -> anyhow::Result<()> {
-        let result: Vec<schema::RealtimeStockMarketRecord> = self
+        let result: Vec<schema::akshare::RealtimeStockMarketRecord> = self
             .ext_res
             .http_client
             .get(&self.data_url)
@@ -65,6 +67,15 @@ impl RealTimeStockMonitor {
 
         Ok(())
     }
+}
+
+// ------------------------------------------------------------------------------------------
+
+/// 收集东方财富-沪深京 A 股日频率数据;
+/// 历史数据按日频率更新, 当日收盘价请在收盘后获取
+pub(super) struct StockZhAHistMonitor {
+    data_url: String,
+    ext_res: ExternalResource,
 }
 
 impl StockZhAHistMonitor {
@@ -99,7 +110,7 @@ impl StockZhAHistMonitor {
                         .inspect_err(|err| println!("error await send = {:?}", err))?
                         .error_for_status()?;
 
-                    let api_data: Vec<schema::StockZhAHist> = res
+                    let api_data: Vec<schema::akshare::StockZhAHist> = res
                         .json()
                         .await
                         .inspect_err(|err| println!("error deser json data = {:?}", err))?;
@@ -157,6 +168,61 @@ impl StockZhAHistMonitor {
     }
 }
 
+// -----------------------------------------------------------------------------------------
+
+pub struct StockHsgtHistEmMonitor {
+    data_url: String,
+    data_table: String,
+    ext_res: ExternalResource,
+}
+
+impl StockHsgtHistEmMonitor {
+    async fn get_dir_data(
+        &self,
+        flow_dir: FlowDirection,
+    ) -> anyhow::Result<Vec<repository::StockHsgtHistEm>> {
+        let api_data: Vec<schema::akshare::StockHsgtHistEm> = self
+            .ext_res
+            .http_client
+            .get(&self.data_url)
+            .query(&[("symbol", flow_dir.as_str())])
+            .send()
+            .await?
+            .error_for_status()?
+            .json()
+            .await?;
+
+        let now = Utc::now();
+
+        Ok(api_data
+            .into_iter()
+            .map(|value| repository::StockHsgtHistEm::from_with_dir_ts(value, flow_dir, now))
+            .collect())
+    }
+
+    async fn get_api_data(&self) -> anyhow::Result<Vec<repository::StockHsgtHistEm>> {
+        let api_data: Vec<Vec<repository::StockHsgtHistEm>> = stream::iter(FlowDirection::iter())
+            .map(|flow_dir| self.get_dir_data(flow_dir))
+            .buffer_unordered(2)
+            .try_collect()
+            .await?;
+
+        Ok(api_data.into_iter().flatten().collect())
+    }
+
+    pub async fn collect_data(&self) -> anyhow::Result<()> {
+        let rows = self.get_api_data().await?;
+
+        let mut inserter = self.ext_res.ch_client.inserter(&self.data_table)?;
+        for row in rows {
+            inserter.write(&row)?;
+        }
+        inserter.end().await?;
+
+        Ok(())
+    }
+}
+
 #[cfg(test)]
 mod test {
     use std::str::FromStr;
@@ -172,7 +238,7 @@ mod test {
         tasks::{TEST_CH_CLIENT, TEST_HTTP_CLIENT, a_stock::StockZhAHistMonitor, with_base_url},
     };
 
-    use super::RealTimeStockMonitor;
+    use super::*;
 
     #[test]
     fn test_cron() {
@@ -218,44 +284,60 @@ mod test {
     }
 
     #[tokio::test]
-    async fn test_steam1() {
-        let stream = stream::iter(StockAdjustmentType::iter())
-            .collect::<Vec<StockAdjustmentType>>()
-            .await;
+    async fn test_stock_hsgt_hist_em_monitor() {
+        let ext_res = ExternalResource {
+            ch_client: TEST_CH_CLIENT.clone(),
+            http_client: TEST_HTTP_CLIENT.clone(),
+        };
 
-        println!("{:?}", stream);
+        let stock_hsgt_hist_em_monitor = StockHsgtHistEmMonitor {
+            data_url: with_base_url("/stock_hsgt_hist_em"),
+            data_table: "stock_hsgt_hist_em".to_owned(),
+            ext_res,
+        };
+
+        stock_hsgt_hist_em_monitor.collect_data().await.unwrap();
     }
 
-    #[tokio::test]
-    async fn test_try_fold() {
-        use futures::channel::mpsc;
-        use futures::stream::{StreamExt, TryStreamExt};
-        use std::thread;
+    // #[tokio::test]
+    // async fn test_steam1() {
+    //     let stream = stream::iter(StockAdjustmentType::iter())
+    //         .collect::<Vec<StockAdjustmentType>>()
+    //         .await;
 
-        let (tx1, rx1) = mpsc::unbounded();
-        let (tx2, rx2) = mpsc::unbounded();
-        let (tx3, rx3) = mpsc::unbounded();
+    //     println!("{:?}", stream);
+    // }
 
-        thread::spawn(move || {
-            tx1.unbounded_send(Ok(1)).unwrap();
-        });
-        thread::spawn(move || {
-            tx2.unbounded_send(Ok(2)).unwrap();
-            tx2.unbounded_send(Err(3)).unwrap();
-            tx2.unbounded_send(Ok(4)).unwrap();
-        });
-        thread::spawn(move || {
-            tx3.unbounded_send(Ok(rx1)).unwrap();
-            tx3.unbounded_send(Ok(rx2)).unwrap();
-            tx3.unbounded_send(Err(5)).unwrap();
-        });
+    // #[tokio::test]
+    // async fn test_try_fold() {
+    //     use futures::channel::mpsc;
+    //     use futures::stream::{StreamExt, TryStreamExt};
+    //     use std::thread;
 
-        let mut stream = rx3.try_flatten();
-        assert_eq!(stream.next().await, Some(Ok(1)));
-        assert_eq!(stream.next().await, Some(Ok(2)));
-        assert_eq!(stream.next().await, Some(Err(3)));
-        assert_eq!(stream.next().await, Some(Ok(4)));
-        assert_eq!(stream.next().await, Some(Err(5)));
-        assert_eq!(stream.next().await, None);
-    }
+    //     let (tx1, rx1) = mpsc::unbounded();
+    //     let (tx2, rx2) = mpsc::unbounded();
+    //     let (tx3, rx3) = mpsc::unbounded();
+
+    //     thread::spawn(move || {
+    //         tx1.unbounded_send(Ok(1)).unwrap();
+    //     });
+    //     thread::spawn(move || {
+    //         tx2.unbounded_send(Ok(2)).unwrap();
+    //         tx2.unbounded_send(Err(3)).unwrap();
+    //         tx2.unbounded_send(Ok(4)).unwrap();
+    //     });
+    //     thread::spawn(move || {
+    //         tx3.unbounded_send(Ok(rx1)).unwrap();
+    //         tx3.unbounded_send(Ok(rx2)).unwrap();
+    //         tx3.unbounded_send(Err(5)).unwrap();
+    //     });
+
+    //     let mut stream = rx3.try_flatten();
+    //     assert_eq!(stream.next().await, Some(Ok(1)));
+    //     assert_eq!(stream.next().await, Some(Ok(2)));
+    //     assert_eq!(stream.next().await, Some(Err(3)));
+    //     assert_eq!(stream.next().await, Some(Ok(4)));
+    //     assert_eq!(stream.next().await, Some(Err(5)));
+    //     assert_eq!(stream.next().await, None);
+    // }
 }

@@ -1,3 +1,5 @@
+-- clickhouse tables，注意后面一定要带分号
+
 -- A股实时数据表结构
 CREATE TABLE IF NOT EXISTS astock_realtime_data
 (
@@ -72,3 +74,25 @@ CREATE TABLE IF NOT EXISTS stock_zh_a_hist
 ENGINE = ReplacingMergeTree
 PARTITION BY toYYYYMM(date)
 ORDER BY (date, code);
+
+-- 东方财富网-数据中心-资金流向-沪深港通资金流向-沪深港通历史数据
+CREATE TABLE IF NOT EXISTS stock_hsgt_hist_em
+(
+    `flow_dir` Enum8('Northbound' = 0, 'Southbound' = 1),
+    `buy_amount` Float64,
+    `sell_amount` Float64,
+    `historical_net_buy_amount` Float64,
+    `daily_balance` Float64,
+    `daily_net_buy_amount` Float64,
+    `daily_inflow` Float64,
+    `holding_market_value` Float64,
+    `hs300_index` Float64,
+    `hs300_change_percent` Float64,
+    `leading_stock_name` String,
+    `leading_stock_code` String,
+    `leading_stock_change_percent` Float64,
+    `date` Date,
+    `ts` DateTime64(3, 'Asia/Shanghai')
+)
+ENGINE = ReplacingMergeTree
+ORDER BY (date, flow_dir);

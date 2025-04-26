@@ -7,7 +7,7 @@ use serde_repr::{Deserialize_repr, Serialize_repr};
 use strum::EnumIter;
 
 use crate::{
-    schema::{self, a_stock},
+    schema::{self, akshare::a_stock},
     utils::splite_date_naive,
 };
 
@@ -234,7 +234,10 @@ pub struct StockZhAHist {
 }
 
 impl StockZhAHist {
-    pub fn from_with_type(value: schema::StockZhAHist, adj_type: StockAdjustmentType) -> Self {
+    pub fn from_with_type(
+        value: schema::akshare::StockZhAHist,
+        adj_type: StockAdjustmentType,
+    ) -> Self {
         let date = NaiveDate::from_str(splite_date_naive(&value.date))
             .expect("date formet should be ISO 8601");
 
@@ -252,6 +255,102 @@ impl StockZhAHist {
             change_amount: value.change_amount,
             date,
             adj_type,
+        }
+    }
+}
+
+// ------------------------------------------------------------------------------
+
+#[derive(Serialize_repr, Deserialize_repr, PartialEq, Debug, EnumIter, Clone, Copy)]
+#[repr(u8)]
+pub enum FlowDirection {
+    Northbound, // 北向资金
+    Southbound, // 南向资金
+}
+
+impl FlowDirection {
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            FlowDirection::Northbound => "北向资金",
+            FlowDirection::Southbound => "南向资金",
+        }
+    }
+}
+
+// TODO 数据结构不同，下面想要的话只能新定义一个schema
+// ShanghaiConnect,  // 沪股通
+// ShenzhenConnect,  // 深股通
+// HongKongConnectSh, // 港股通沪
+// HongKongConnectSz, // 港股通深
+
+/// 东方财富网-数据中心-资金流向-沪深港通资金流向-沪深港通历史数据，  
+/// 分为南向北向
+#[derive(Debug, Serialize, Deserialize, Row)]
+pub struct StockHsgtHistEm {
+    /// 资金流动方向
+    pub flow_dir: FlowDirection,
+    /// 买入成交额，单位：亿元
+    pub buy_amount: f64,
+    /// 卖出成交额，单位：亿元
+    pub sell_amount: f64,
+    /// 历史累计净买额，单位：万亿元
+    pub historical_net_buy_amount: f64,
+    /// 当日余额，单位：亿元
+    pub daily_balance: f64,
+    /// 当日成交净买额，单位：亿元
+    pub daily_net_buy_amount: f64,
+    /// 当日资金流入，单位：亿元
+    pub daily_inflow: f64,
+    /// 持股市值，单位：元
+    pub holding_market_value: f64,
+    /// 沪深300指数点位
+    pub hs300_index: f64,
+    /// 沪深300指数涨跌幅，单位：%
+    pub hs300_change_percent: f64,
+    /// 领涨股名称
+    pub leading_stock_name: String,
+    /// 领涨股代码，例如 "600198.SH"
+    pub leading_stock_code: String,
+    /// 领涨股涨跌幅，单位：%
+    pub leading_stock_change_percent: f64,
+    /// 日期，格式："2023-09-28T00:00:00.000"
+    #[serde(with = "clickhouse::serde::chrono::date")]
+    pub date: NaiveDate,
+    /// 收集数据时间戳，毫秒等级
+    #[serde(with = "clickhouse::serde::chrono::datetime64::millis")]
+    pub ts: DateTime<Utc>,
+}
+
+impl StockHsgtHistEm {
+    pub fn from_with_dir_ts(
+        mut value: schema::akshare::StockHsgtHistEm,
+        flow_dir: FlowDirection,
+        ts: DateTime<Utc>,
+    ) -> Self {
+        value.date.push('Z');
+        let date = value
+            .date
+            .parse::<DateTime<Utc>>()
+            .unwrap()
+            .naive_utc()
+            .date();
+
+        Self {
+            flow_dir,
+            buy_amount: value.buy_amount.unwrap_or_default(),
+            sell_amount: value.sell_amount.unwrap_or_default(),
+            historical_net_buy_amount: value.historical_net_buy_amount.unwrap_or_default(),
+            daily_balance: value.daily_balance.unwrap_or_default(),
+            daily_net_buy_amount: value.daily_net_buy_amount.unwrap_or_default(),
+            daily_inflow: value.daily_inflow.unwrap_or_default(),
+            holding_market_value: value.holding_market_value,
+            hs300_index: value.hs300_index,
+            hs300_change_percent: value.hs300_change_percent,
+            leading_stock_name: value.leading_stock_name,
+            leading_stock_code: value.leading_stock_code,
+            leading_stock_change_percent: value.leading_stock_change_percent,
+            date,
+            ts,
         }
     }
 }
