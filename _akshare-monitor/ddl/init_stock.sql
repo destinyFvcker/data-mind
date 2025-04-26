@@ -94,5 +94,30 @@ CREATE TABLE IF NOT EXISTS stock_hsgt_hist_em
     `date` Date,
     `ts` DateTime64(3, 'Asia/Shanghai')
 )
-ENGINE = ReplacingMergeTree
+ENGINE = ReplacingMergeTree(ts)
 ORDER BY (date, flow_dir);
+
+-- 东方财富网-行情中心-涨停板行情-涨停股池
+create table if not EXISTS stock_zt_pool_em
+(
+    `code` String,
+    `name` String,
+    `lockup_funds` Float64,
+    `serial_number` UInt32,
+    `total_market_value` Float64,
+    `turnover` Float64,
+    `industry` String,
+    `turnover_rate` Float64,
+    `last_lockup_time` String,
+    `latest_price` Float64,
+    `circulating_market_value` Float64,
+    `limit_up_statistics` String,
+    `price_change_percentage` Float64,
+    `failed_lockup_count` UInt32,
+    `consecutive_limit_ups` UInt32,
+    `first_lockup_time` String,
+    `date` Date,
+    `ts` DateTime64(3, 'Asia/Shanghai')
+)
+ENGINE = ReplacingMergeTree(ts)
+order by (date, code)

@@ -7,7 +7,9 @@ use crate::scheduler::{Schedulable, ScheduleTaskType, TaskMeta};
 use super::{
     TRADE_TIME_CRON,
     a_index::{IndexOption50EtfQvixMonitor, StockZhIndexDailyMonitor},
-    a_stock::{RealTimeStockMonitor, StockHsgtHistEmMonitor, StockZhAHistMonitor},
+    a_stock::{
+        RealTimeStockMonitor, StockHsgtHistEmMonitor, StockZhAHistMonitor, StockZtPoolEmMonitor,
+    },
     in_trade_time,
 };
 
@@ -99,6 +101,26 @@ impl Schedulable for StockHsgtHistEmMonitor {
         TaskMeta {
             name: "stock_hsgt_hist_em".to_owned(),
             desc: "东方财富网-数据中心-资金流向-沪深港通资金流向-沪深港通历史数据".to_owned(),
+            cron_expr: "0 30 15 * * MON-FRI".to_owned(),
+            tag: Some(ScheduleTaskType::AStock),
+        }
+    }
+
+    fn execute(
+        self: std::sync::Arc<Self>,
+    ) -> Box<dyn Future<Output = anyhow::Result<()>> + Send + 'static> {
+        Box::new(async move {
+            self.collect_data().await?;
+            Ok(())
+        })
+    }
+}
+
+impl Schedulable for StockZtPoolEmMonitor {
+    fn gen_meta(&self) -> TaskMeta {
+        TaskMeta {
+            name: "stock_zt_pool_em".to_owned(),
+            desc: "东方财富网-行情中心-涨停板行情-涨停股池".to_owned(),
             cron_expr: "0 30 15 * * MON-FRI".to_owned(),
             tag: Some(ScheduleTaskType::AStock),
         }

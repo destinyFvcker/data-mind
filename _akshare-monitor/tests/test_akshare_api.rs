@@ -187,3 +187,24 @@ async fn test_stock_hsgt_hist_em() {
             .unwrap();
     }
 }
+
+#[tokio::test]
+async fn test_stock_zt_pool_em() {
+    let res: Vec<Value> = HTTP_CLIENT
+        .get(with_base_url("/stock_zt_pool_em"))
+        .query(&[("date", "20250411")])
+        .send()
+        .await
+        .unwrap()
+        .error_for_status()
+        .unwrap()
+        .json()
+        .await
+        .unwrap();
+
+    println!("len of res = {}", res.len());
+
+    let mut file = File::create("../tmp/涨停股池.json").unwrap();
+    file.write_all(serde_json::to_string_pretty(&res).unwrap().as_bytes())
+        .unwrap();
+}
