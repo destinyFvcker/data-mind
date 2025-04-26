@@ -42,7 +42,7 @@ pub struct StockZhIndexDailyMonitor {
 impl StockZhIndexDailyMonitor {
     /// 获取所有指数数据代码
     async fn get_codes(&self) -> anyhow::Result<Vec<String>> {
-        let values: Vec<schema::StockZhIndexSpotSina> = self
+        let values: Vec<schema::akshare::StockZhIndexSpotSina> = self
             .ext_res
             .http_client
             .get(&self.codes_url)
@@ -60,7 +60,7 @@ impl StockZhIndexDailyMonitor {
         &self,
         code: String,
     ) -> anyhow::Result<Vec<repository::StockZhIndexDaily>> {
-        let api_data: Vec<schema::StockZhIndexDaily> = self
+        let api_data: Vec<schema::akshare::StockZhIndexDaily> = self
             .ext_res
             .http_client
             .get(&self.data_url)
@@ -117,7 +117,7 @@ pub struct IndexOption50EtfQvixMonitor {
 
 impl IndexOption50EtfQvixMonitor {
     async fn get_data(&self) -> anyhow::Result<Vec<Option<repository::IndexOption50EtfQvix>>> {
-        let api_data: Vec<schema::IndexOption50EtfQvix> = self
+        let api_data: Vec<schema::akshare::IndexOption50EtfQvix> = self
             .ext_res
             .http_client
             .get(&self.data_url)

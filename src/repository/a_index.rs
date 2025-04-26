@@ -31,7 +31,7 @@ pub struct StockZhIndexDaily {
 
 impl StockZhIndexDaily {
     pub fn from_with_ts(
-        mut value: schema::StockZhIndexDaily,
+        mut value: schema::akshare::StockZhIndexDaily,
         code: &str,
         ts: DateTime<Utc>,
     ) -> Self {
@@ -81,7 +81,7 @@ pub struct IndexOption50EtfQvix {
 
 impl IndexOption50EtfQvix {
     pub fn from_with_ts(
-        mut value: schema::IndexOption50EtfQvix,
+        mut value: schema::akshare::IndexOption50EtfQvix,
         ts: DateTime<Utc>,
     ) -> Option<Self> {
         if value.open.is_none()

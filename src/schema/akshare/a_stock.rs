@@ -117,3 +117,50 @@ pub struct StockZhAHist {
     #[serde(rename(deserialize = "股票代码"))]
     pub code: String,
 }
+
+/// 沪深港通历史数据
+///
+/// 目标地址: https://data.eastmoney.com/hsgt/index.html  
+/// 描述: 东方财富网-数据中心-资金流向-沪深港通资金流向-沪深港通历史数据
+#[derive(Debug, Deserialize)]
+pub struct StockHsgtHistEm {
+    /// 买入成交额，单位：亿元
+    #[serde(rename(deserialize = "买入成交额"))]
+    pub buy_amount: Option<f64>,
+    /// 卖出成交额，单位：亿元
+    #[serde(rename(deserialize = "卖出成交额"))]
+    pub sell_amount: Option<f64>,
+    /// 历史累计净买额，单位：万亿元
+    #[serde(rename(deserialize = "历史累计净买额"))]
+    pub historical_net_buy_amount: Option<f64>,
+    /// 当日余额，单位：亿元
+    #[serde(rename(deserialize = "当日余额"))]
+    pub daily_balance: Option<f64>,
+    /// 当日成交净买额，单位：亿元
+    #[serde(rename(deserialize = "当日成交净买额"))]
+    pub daily_net_buy_amount: Option<f64>,
+    /// 当日资金流入，单位：亿元
+    #[serde(rename(deserialize = "单日资金流入"))]
+    pub daily_inflow: Option<f64>,
+    /// 持股市值，单位：元
+    #[serde(rename(deserialize = "持股市值"))]
+    pub holding_market_value: f64,
+    /// 日期，格式："2023-09-28T00:00:00.000"
+    #[serde(rename(deserialize = "日期"))]
+    pub date: String,
+    /// 沪深300指数点位
+    #[serde(rename(deserialize = "沪深300"))]
+    pub hs300_index: f64,
+    /// 沪深300指数涨跌幅，单位：%
+    #[serde(rename(deserialize = "沪深300-涨跌幅"))]
+    pub hs300_change_percent: f64,
+    /// 领涨股名称
+    #[serde(rename(deserialize = "领涨股"))]
+    pub leading_stock_name: String,
+    /// 领涨股代码，例如 "600198.SH"
+    #[serde(rename(deserialize = "领涨股-代码"))]
+    pub leading_stock_code: String,
+    /// 领涨股涨跌幅，单位：%
+    #[serde(rename(deserialize = "领涨股-涨跌幅"))]
+    pub leading_stock_change_percent: f64,
+}

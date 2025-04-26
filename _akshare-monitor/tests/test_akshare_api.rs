@@ -35,7 +35,7 @@ async fn test_stock_zh_a_hist() {
         .await
         .unwrap();
 
-    let value: Vec<schema::StockZhAHist> = serde_json::from_str(&res).unwrap();
+    let value: Vec<schema::akshare::StockZhAHist> = serde_json::from_str(&res).unwrap();
     println!("values = {:#?}", value);
 }
 
@@ -77,7 +77,7 @@ async fn test_stock_zh_index_spot_sina() {
         .await
         .unwrap();
 
-    let values: Vec<schema::StockZhIndexSpotSina> = serde_json::from_str(&res).unwrap();
+    let values: Vec<schema::akshare::StockZhIndexSpotSina> = serde_json::from_str(&res).unwrap();
     println!("res len = {}", values.len());
 
     let mut file = File::create("../tmp/实时行情数据-新浪.json").unwrap();
@@ -122,4 +122,68 @@ async fn test_index_option_50etf_qvix() {
     let mut file = File::create("../tmp/50ETF 期权波动率指数.json").unwrap();
     file.write_all(serde_json::to_string_pretty(&values).unwrap().as_bytes())
         .unwrap();
+}
+
+#[tokio::test]
+async fn test_stock_hsgt_fund_flow_summary_em() {
+    let values: Vec<Value> = HTTP_CLIENT
+        .get(with_base_url("/stock_hsgt_fund_flow_summary_em"))
+        .send()
+        .await
+        .unwrap()
+        .error_for_status()
+        .unwrap()
+        .json()
+        .await
+        .unwrap();
+
+    println!("length of res = {}", values.len());
+
+    let mut file = File::create(format!("../tmp/沪深港通资金流向.json")).unwrap();
+    file.write_all(serde_json::to_string_pretty(&values).unwrap().as_bytes())
+        .unwrap();
+}
+
+#[tokio::test]
+async fn test_stock_hsgt_hist_em() {
+    let symbols = [
+        "北向资金",
+        // "沪股通",
+        // "深股通",
+        "南向资金",
+        // "港股通沪",
+        // "港股通深",
+    ];
+
+    for symbol in symbols {
+        let values: Vec<Value> = HTTP_CLIENT
+            .get(with_base_url("/stock_hsgt_hist_em"))
+            .query(&[("symbol", symbol)])
+            .send()
+            .await
+            .unwrap()
+            .error_for_status()
+            .unwrap()
+            .json()
+            .await
+            .unwrap();
+
+        // for value in values {
+        //     println!("{:#?}", value);
+        //     let data = serde_json::from_value::<schema::akshare::StockHsgtHistEm>(value);
+        //     match data {
+        //         Ok(data) => {}
+        //         Err(err) => {
+        //             println!("err = {:?}", err);
+        //             panic!()
+        //         }
+        //     }
+        // }
+
+        println!("length of res = {}", values.len());
+
+        let mut file = File::create(format!("../tmp/{}.json", symbol)).unwrap();
+        file.write_all(serde_json::to_string_pretty(&values).unwrap().as_bytes())
+            .unwrap();
+    }
 }

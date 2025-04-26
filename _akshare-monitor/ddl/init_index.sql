@@ -1,3 +1,5 @@
+-- clickhouse tables，注意结尾一定要带分号
+
 -- 历史行情数据-新浪 描述: 股票指数的历史数据按日频率更新
 CREATE TABLE IF NOT EXISTS stock_zh_index_daily
 (
