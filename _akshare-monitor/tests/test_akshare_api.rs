@@ -103,3 +103,23 @@ async fn test_stock_zh_index_daily() {
     file.write_all(serde_json::to_string_pretty(&values).unwrap().as_bytes())
         .unwrap();
 }
+
+#[tokio::test]
+async fn test_index_option_50etf_qvix() {
+    let values: Vec<Value> = HTTP_CLIENT
+        .get(with_base_url("/index_option_50etf_qvix"))
+        .send()
+        .await
+        .unwrap()
+        .error_for_status()
+        .unwrap()
+        .json()
+        .await
+        .unwrap();
+
+    println!("length of res = {}", values.len());
+
+    let mut file = File::create("../tmp/50ETF 期权波动率指数.json").unwrap();
+    file.write_all(serde_json::to_string_pretty(&values).unwrap().as_bytes())
+        .unwrap();
+}
