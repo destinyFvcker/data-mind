@@ -208,3 +208,45 @@ async fn test_stock_zt_pool_em() {
     file.write_all(serde_json::to_string_pretty(&res).unwrap().as_bytes())
         .unwrap();
 }
+
+#[tokio::test]
+async fn test_stock_sse_summary() {
+    let res: Vec<Value> = HTTP_CLIENT
+        .get(with_base_url("/stock_sse_deal_daily"))
+        .query(&[("date", "20250221")])
+        .send()
+        .await
+        .unwrap()
+        .error_for_status()
+        .unwrap()
+        .json()
+        .await
+        .unwrap();
+
+    println!("len of res = {}", res.len());
+
+    let mut file = File::create("../tmp/市场总貌-上海证券交易所.json").unwrap();
+    file.write_all(serde_json::to_string_pretty(&res).unwrap().as_bytes())
+        .unwrap();
+}
+
+#[tokio::test]
+async fn test_stock_szse_summary() {
+    let res: Vec<Value> = HTTP_CLIENT
+        .get(with_base_url("/stock_szse_summary"))
+        .query(&[("date", "20250221")])
+        .send()
+        .await
+        .unwrap()
+        .error_for_status()
+        .unwrap()
+        .json()
+        .await
+        .unwrap();
+
+    println!("len of res = {}", res.len());
+
+    let mut file = File::create("../tmp/证券类别统计-深圳证券交易所.json").unwrap();
+    file.write_all(serde_json::to_string_pretty(&res).unwrap().as_bytes())
+        .unwrap();
+}
