@@ -35,7 +35,7 @@ anyhow = "1.0.96"
 snafu = "0.8.5"
 ftlog = "0.2.14"
 time = "0.3.37"
-reqwest = { version = "0.12.14", features = ["json"] }
+reqwest = { version = "0.12.14", features = ["json", "blocking"] }
 serde_json = "1.0.140"
 actix-web = { version = "4.10.2", features = ["macros"] }
 utoipa-actix-web = "0.1.2"
@@ -44,7 +44,7 @@ utoipa = { version = "5.3.1", features = ["actix_extras"] }
 serde_repr = "0.1.20"
 strum = { version = "0.27.1", features = ["derive"] }
 futures = "0.3.31"
-backoff = "0.4.0"
+backoff = { version = "0.4.0", features = ["tokio"] }
 sqlx = { version = "0.8.3", features = [
     "runtime-tokio",
     "tls-native-tls",
@@ -64,3 +64,4 @@ clickhouse.workspace = true
 strum.workspace = true
 futures.workspace = true
 sqlx.workspace = true
+backoff.workspace = true

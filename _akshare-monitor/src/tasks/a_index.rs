@@ -1,5 +1,5 @@
 use chrono::Utc;
-use data_mind::{repository, schema};
+use data_mind::{repository, schema, utils::config_backoff};
 use futures::{StreamExt, TryStreamExt, stream};
 
 use crate::{init::ExternalResource, scheduler::SCHEDULE_TASK_MANAGER};
@@ -60,16 +60,22 @@ impl StockZhIndexDailyMonitor {
         &self,
         code: String,
     ) -> anyhow::Result<Vec<repository::StockZhIndexDaily>> {
-        let api_data: Vec<schema::akshare::StockZhIndexDaily> = self
-            .ext_res
-            .http_client
-            .get(&self.data_url)
-            .query(&[("symbol", code.as_str())])
-            .send()
-            .await?
-            .error_for_status()?
-            .json()
-            .await?;
+        let backoff_s = config_backoff(2, 5);
+        let api_data = backoff::future::retry(backoff_s, || async {
+            let api_data: Vec<schema::akshare::StockZhIndexDaily> = self
+                .ext_res
+                .http_client
+                .get(&self.data_url)
+                .query(&[("symbol", code.as_str())])
+                .send()
+                .await?
+                .error_for_status()?
+                .json()
+                .await
+                .map_err(backoff::Error::Permanent)?;
+            Ok(api_data)
+        })
+        .await?;
 
         let now = Utc::now();
 
@@ -107,7 +113,7 @@ impl StockZhIndexDailyMonitor {
     }
 }
 
-// --------------
+// ------------------------------------------------------------------------
 
 pub struct IndexOption50EtfQvixMonitor {
     data_url: String,
@@ -117,15 +123,21 @@ pub struct IndexOption50EtfQvixMonitor {
 
 impl IndexOption50EtfQvixMonitor {
     async fn get_data(&self) -> anyhow::Result<Vec<Option<repository::IndexOption50EtfQvix>>> {
-        let api_data: Vec<schema::akshare::IndexOption50EtfQvix> = self
-            .ext_res
-            .http_client
-            .get(&self.data_url)
-            .send()
-            .await?
-            .error_for_status()?
-            .json()
-            .await?;
+        let backoff_s = config_backoff(2, 5);
+        let api_data = backoff::future::retry(backoff_s, || async {
+            let api_data: Vec<schema::akshare::IndexOption50EtfQvix> = self
+                .ext_res
+                .http_client
+                .get(&self.data_url)
+                .send()
+                .await?
+                .error_for_status()?
+                .json()
+                .await
+                .map_err(backoff::Error::Permanent)?;
+            Ok(api_data)
+        })
+        .await?;
 
         let now = Utc::now();
         let repo_data = api_data

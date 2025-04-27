@@ -180,6 +180,8 @@ impl RealtimeStockMarketRecord {
     }
 }
 
+// ---------------------------------------------------------------------------------
+
 /// 日频A股数据复权方式
 #[derive(Serialize_repr, Deserialize_repr, PartialEq, Debug, EnumIter, Clone, Copy)]
 #[repr(u8)]
@@ -204,6 +206,8 @@ impl StockAdjustmentType {
 /// clickhouse数据模型
 #[derive(Debug, Deserialize, Serialize, Row)]
 pub struct StockZhAHist {
+    /// 复权方式枚举
+    pub adj_type: StockAdjustmentType,
     /// 股票代码
     pub code: String,
     /// 开盘价
@@ -229,14 +233,16 @@ pub struct StockZhAHist {
     /// 数据产生日期
     #[serde(with = "clickhouse::serde::chrono::date")]
     pub date: NaiveDate,
-    /// 复权方式枚举
-    pub adj_type: StockAdjustmentType,
+    /// 数据收集时间戳，毫秒等级
+    #[serde(with = "clickhouse::serde::chrono::datetime64::millis")]
+    pub ts: DateTime<Utc>,
 }
 
 impl StockZhAHist {
     pub fn from_with_type(
         value: schema::akshare::StockZhAHist,
         adj_type: StockAdjustmentType,
+        ts: DateTime<Utc>,
     ) -> Self {
         let date = NaiveDate::from_str(splite_date_naive(&value.date))
             .expect("date formet should be ISO 8601");
@@ -255,6 +261,7 @@ impl StockZhAHist {
             change_amount: value.change_amount,
             date,
             adj_type,
+            ts,
         }
     }
 }

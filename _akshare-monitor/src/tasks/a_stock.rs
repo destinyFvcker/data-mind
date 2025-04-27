@@ -15,6 +15,7 @@ use crate::{
 use data_mind::{
     repository::{self, FlowDirection, StockAdjustmentType},
     schema,
+    utils::config_backoff,
 };
 
 use super::{TRADE_TIME_CRON, in_trade_time, with_base_url};
@@ -23,9 +24,19 @@ use super::{TRADE_TIME_CRON, in_trade_time, with_base_url};
 pub(super) async fn start_a_stock_tasks(ext_res: ExternalResource) {
     let realtime_stock_monitor = RealTimeStockMonitor {
         data_url: with_base_url("/stock_zh_a_spot_em"),
+        data_table: "astock_realtime_data".to_owned(),
         ext_res: ext_res.clone(),
     };
     SCHEDULE_TASK_MANAGER.add_task(realtime_stock_monitor).await;
+
+    let stock_zh_a_hist_monitor = StockZhAHistMonitor {
+        data_url: with_base_url("/stock_zh_a_hist"),
+        data_table: "stock_zh_a_hist".to_owned(),
+        ext_res: ext_res.clone(),
+    };
+    SCHEDULE_TASK_MANAGER
+        .add_task(stock_zh_a_hist_monitor)
+        .await;
 
     let stock_hsgt_hist_em_monitor = StockHsgtHistEmMonitor {
         data_url: with_base_url("/stock_hsgt_hist_em"),
@@ -49,18 +60,28 @@ pub(super) async fn start_a_stock_tasks(ext_res: ExternalResource) {
 /// 收集东方财富网-沪深京 A 股-实时行情数据
 pub(super) struct RealTimeStockMonitor {
     data_url: String,
+    data_table: String,
     ext_res: ExternalResource,
 }
 
 impl RealTimeStockMonitor {
     pub async fn collect_data(&self, ts: chrono::DateTime<Utc>) -> anyhow::Result<()> {
-        let result: Vec<schema::akshare::RealtimeStockMarketRecord> = self
-            .ext_res
-            .http_client
-            .get(&self.data_url)
-            .send()
-            .await?
-            .json()
+        let backoff_s = config_backoff(2, 10);
+
+        let result: Vec<schema::akshare::RealtimeStockMarketRecord> =
+            backoff::future::retry(backoff_s, || async {
+                let api_data: Vec<schema::akshare::RealtimeStockMarketRecord> = self
+                    .ext_res
+                    .http_client
+                    .get(&self.data_url)
+                    .send()
+                    .await?
+                    .json()
+                    .await
+                    .map_err(backoff::Error::Permanent)?;
+
+                Ok(api_data)
+            })
             .await?;
 
         let astock_realtime_data_row = result
@@ -68,7 +89,7 @@ impl RealTimeStockMonitor {
             .map(|record| repository::RealtimeStockMarketRecord::from_with_ts(record, ts))
             .collect::<Vec<_>>();
 
-        let mut inserter = self.ext_res.ch_client.inserter("astock_realtime_data")?;
+        let mut inserter = self.ext_res.ch_client.inserter(&self.data_table)?;
         for row in astock_realtime_data_row {
             inserter.write(&row)?;
         }
@@ -84,12 +105,66 @@ impl RealTimeStockMonitor {
 /// 历史数据按日频率更新, 当日收盘价请在收盘后获取
 pub(super) struct StockZhAHistMonitor {
     data_url: String,
+    data_table: String,
     ext_res: ExternalResource,
 }
 
 impl StockZhAHistMonitor {
-    /// 从akshare请求数据，返回clickhouse schema格式的Vec，
-    /// 包括对应code对应日期之中：`不复权 | 前复权 | 后复权`的整体数据
+    async fn req_data_with_type(
+        &self,
+        code: &str,
+        start_date: &str,
+        end_date: &str,
+        adj_type: StockAdjustmentType,
+    ) -> anyhow::Result<Vec<repository::StockZhAHist>> {
+        let backoff_s = config_backoff(3, 30);
+        let ch_data: Vec<repository::StockZhAHist> = backoff::future::retry(backoff_s, || async {
+            let api_data: Vec<schema::akshare::StockZhAHist> = self
+                .ext_res
+                .http_client
+                .get(&self.data_url)
+                .query(&[
+                    ("symbol", code),
+                    ("period", "daily"),
+                    ("start_date", start_date),
+                    ("end_date", end_date),
+                    ("adjust", adj_type.to_str()),
+                ])
+                .send()
+                .await?
+                .error_for_status()?
+                .json()
+                .await
+                .map_err(backoff::Error::Permanent)?;
+
+            let now = Utc::now();
+            let ch_data = api_data
+                .into_iter()
+                .map(|value| repository::StockZhAHist::from_with_type(value, adj_type, now))
+                .collect::<Vec<repository::StockZhAHist>>();
+
+            Ok(ch_data)
+        })
+        .await?;
+
+        // use std::io::Write;
+        // let mut file = std::fs::OpenOptions::new()
+        //     .create(true)
+        //     .append(true)
+        //     .open("../tmp/output.log")?;
+        // let now = Utc::now();
+        // writeln!(
+        //     file,
+        //     "time = {:?}, code = {}, adj_type = {} processed",
+        //     now,
+        //     code,
+        //     adj_type.to_str()
+        // );
+
+        Ok(ch_data)
+    }
+
+    /// 从akshare请求数据，返回clickhouse schema格式的Vec，包括对应code对应日期之中：`不复权 | 前复权 | 后复权`的整体数据
     /// 注意date_str是一个 yyyymmdd 格式的时间字符串
     async fn req_data(
         &self,
@@ -102,33 +177,13 @@ impl StockZhAHistMonitor {
 
         let hist_data: Vec<Vec<repository::StockZhAHist>> =
             stream::iter(StockAdjustmentType::iter())
-                .then(async |adj_type| {
-                    let res = self
-                        .ext_res
-                        .http_client
-                        .get(&self.data_url)
-                        .query(&[
-                            ("symbol", code.as_str()),
-                            ("period", "daily"),
-                            ("start_date", start_date.as_str()),
-                            ("end_date", end_date.as_str()),
-                            ("adjust", adj_type.to_str()),
-                        ])
-                        .send()
-                        .await
-                        .inspect_err(|err| println!("error await send = {:?}", err))?
-                        .error_for_status()?;
-
-                    let api_data: Vec<schema::akshare::StockZhAHist> = res
-                        .json()
-                        .await
-                        .inspect_err(|err| println!("error deser json data = {:?}", err))?;
-                    let ch_data = api_data
-                        .into_iter()
-                        .map(|value| repository::StockZhAHist::from_with_type(value, adj_type))
-                        .collect::<Vec<repository::StockZhAHist>>();
-
-                    Ok::<Vec<data_mind::repository::StockZhAHist>, anyhow::Error>(ch_data)
+                .then(|adj_type| {
+                    self.req_data_with_type(
+                        code.as_str(),
+                        start_date.as_str(),
+                        end_date.as_str(),
+                        adj_type,
+                    )
                 })
                 .try_collect()
                 .await?;
@@ -155,19 +210,15 @@ impl StockZhAHistMonitor {
             .unwrap();
 
         let hist_data: Vec<Vec<repository::StockZhAHist>> = stream::iter(codes)
-            .take(3)
             .map(|code| self.req_data(code, start, end))
-            .buffer_unordered(10)
+            .buffer_unordered(64)
             .try_collect()
             .await?;
 
         let hist_data = hist_data.into_iter().flatten().collect::<Vec<_>>();
 
-        let mut inserter = self
-            .ext_res
-            .ch_client
-            .inserter("stock_zh_a_hist")?
-            .with_option("insert_deduplicate", "1");
+        let mut inserter = self.ext_res.ch_client.inserter(&self.data_table)?;
+        // .with_option("insert_deduplicate", "1");
         for row in hist_data {
             inserter.write(&row)?;
         }
@@ -190,16 +241,23 @@ impl StockHsgtHistEmMonitor {
         &self,
         flow_dir: FlowDirection,
     ) -> anyhow::Result<Vec<repository::StockHsgtHistEm>> {
-        let api_data: Vec<schema::akshare::StockHsgtHistEm> = self
-            .ext_res
-            .http_client
-            .get(&self.data_url)
-            .query(&[("symbol", flow_dir.as_str())])
-            .send()
-            .await?
-            .error_for_status()?
-            .json()
-            .await?;
+        let backoff_s = config_backoff(2, 5);
+        let api_data = backoff::future::retry(backoff_s, || async {
+            let api_data: Vec<schema::akshare::StockHsgtHistEm> = self
+                .ext_res
+                .http_client
+                .get(&self.data_url)
+                .query(&[("symbol", flow_dir.as_str())])
+                .send()
+                .await?
+                .error_for_status()?
+                .json()
+                .await
+                .map_err(backoff::Error::Permanent)?;
+
+            Ok(api_data)
+        })
+        .await?;
 
         let now = Utc::now();
 
@@ -247,16 +305,24 @@ impl StockZtPoolEmMonitor {
         date: NaiveDate,
     ) -> anyhow::Result<Vec<repository::StockZtPoolEm>> {
         let formatted = date.format("%Y%m%d").to_string();
-        let api_data: Vec<schema::akshare::StockZtPoolEm> = self
-            .ext_res
-            .http_client
-            .get(&self.data_url)
-            .query(&[("date", formatted)])
-            .send()
-            .await?
-            .error_for_status()?
-            .json()
-            .await?;
+        let backoff_s = config_backoff(2, 5);
+
+        let api_data = backoff::future::retry(backoff_s, || async {
+            let api_data: Vec<schema::akshare::StockZtPoolEm> = self
+                .ext_res
+                .http_client
+                .get(&self.data_url)
+                .query(&[("date", formatted.as_str())])
+                .send()
+                .await?
+                .error_for_status()?
+                .json()
+                .await
+                .map_err(backoff::Error::Permanent)?;
+
+            Ok(api_data)
+        })
+        .await?;
 
         let now = Utc::now();
 
@@ -301,11 +367,13 @@ impl StockZtPoolEmMonitor {
 
 #[cfg(test)]
 mod test {
-    use std::str::FromStr;
+    use std::{io::Read, os::fd, str::FromStr};
 
+    use backoff::{Error, ExponentialBackoff, retry};
     use chrono::{Duration, Local, Utc};
     use data_mind::repository::StockAdjustmentType;
     use futures::{StreamExt, stream};
+    use serde_json::Value;
     use strum::IntoEnumIterator;
 
     use crate::{
@@ -329,13 +397,14 @@ mod test {
     }
 
     #[tokio::test]
-    async fn test_realtime_collect_data() {
+    async fn test_realtime_monitor() {
         let ext_res = ExternalResource {
             ch_client: TEST_CH_CLIENT.clone(),
             http_client: TEST_HTTP_CLIENT.clone(),
         };
         let reatime_stock_monitor = RealTimeStockMonitor {
             data_url: with_base_url("/stock_zh_a_spot_em"),
+            data_table: "astock_realtime_data".to_owned(),
             ext_res,
         };
 
@@ -346,13 +415,14 @@ mod test {
     }
 
     #[tokio::test]
-    async fn test_stock_zh_a_hist_collect_data() {
+    async fn test_stock_zh_a_hist_monitor() {
         let ext_res = ExternalResource {
             ch_client: TEST_CH_CLIENT.clone(),
             http_client: TEST_HTTP_CLIENT.clone(),
         };
         let stock_zh_a_hist_monitor = StockZhAHistMonitor {
             data_url: with_base_url("/stock_zh_a_hist"),
+            data_table: "stock_zh_a_hist".to_owned(),
             ext_res,
         };
 
@@ -406,46 +476,4 @@ mod test {
             println!("{}", formatted);
         }
     }
-
-    // #[tokio::test]
-    // async fn test_steam1() {
-    //     let stream = stream::iter(StockAdjustmentType::iter())
-    //         .collect::<Vec<StockAdjustmentType>>()
-    //         .await;
-
-    //     println!("{:?}", stream);
-    // }
-
-    // #[tokio::test]
-    // async fn test_try_fold() {
-    //     use futures::channel::mpsc;
-    //     use futures::stream::{StreamExt, TryStreamExt};
-    //     use std::thread;
-
-    //     let (tx1, rx1) = mpsc::unbounded();
-    //     let (tx2, rx2) = mpsc::unbounded();
-    //     let (tx3, rx3) = mpsc::unbounded();
-
-    //     thread::spawn(move || {
-    //         tx1.unbounded_send(Ok(1)).unwrap();
-    //     });
-    //     thread::spawn(move || {
-    //         tx2.unbounded_send(Ok(2)).unwrap();
-    //         tx2.unbounded_send(Err(3)).unwrap();
-    //         tx2.unbounded_send(Ok(4)).unwrap();
-    //     });
-    //     thread::spawn(move || {
-    //         tx3.unbounded_send(Ok(rx1)).unwrap();
-    //         tx3.unbounded_send(Ok(rx2)).unwrap();
-    //         tx3.unbounded_send(Err(5)).unwrap();
-    //     });
-
-    //     let mut stream = rx3.try_flatten();
-    //     assert_eq!(stream.next().await, Some(Ok(1)));
-    //     assert_eq!(stream.next().await, Some(Ok(2)));
-    //     assert_eq!(stream.next().await, Some(Err(3)));
-    //     assert_eq!(stream.next().await, Some(Ok(4)));
-    //     assert_eq!(stream.next().await, Some(Err(5)));
-    //     assert_eq!(stream.next().await, None);
-    // }
 }

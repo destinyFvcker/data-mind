@@ -20,7 +20,7 @@ impl Schedulable for StockZhAHistMonitor {
             desc:
                 "收集东方财富-沪深京 A 股日频率数据; 历史数据按日频率更新, 当日收盘价请在收盘后获取"
                     .to_owned(),
-            cron_expr: "0 30 15 * * MON-FRI".to_owned(),
+            cron_expr: "0 40 15 * * MON-FRI".to_owned(),
             tag: Some(ScheduleTaskType::AStock),
         }
     }

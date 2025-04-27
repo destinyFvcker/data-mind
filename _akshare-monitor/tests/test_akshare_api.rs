@@ -1,9 +1,10 @@
+use backoff::ExponentialBackoff;
 use data_mind::schema;
 use reqwest::{Client, ClientBuilder};
 use serde_json::Value;
 use std::{env, fs::File, io::Write, sync::LazyLock, time::Duration};
 
-static HTTP_CLIENT: LazyLock<Client> = LazyLock::new(|| {
+static TEST_HTTP_CLIENT: LazyLock<Client> = LazyLock::new(|| {
     ClientBuilder::new()
         .connect_timeout(Duration::from_secs(5))
         .timeout(Duration::from_secs(20))
@@ -19,13 +20,13 @@ fn with_base_url(path: &str) -> String {
 
 #[tokio::test]
 async fn test_stock_zh_a_hist() {
-    let res = HTTP_CLIENT
+    let res = TEST_HTTP_CLIENT
         .get(with_base_url("/stock_zh_a_hist"))
         .query(&[
             ("symbol", "000088"),
             ("period", "daily"),
-            ("start_date", "20250418"),
-            ("end_date", "20250424"),
+            ("start_date", "20250421"),
+            ("end_date", "20250425"),
             ("adjust", ""),
         ])
         .send()
@@ -35,8 +36,54 @@ async fn test_stock_zh_a_hist() {
         .await
         .unwrap();
 
-    let value: Vec<schema::akshare::StockZhAHist> = serde_json::from_str(&res).unwrap();
-    println!("values = {:#?}", value);
+    let value: Vec<Value> = serde_json::from_str(&res).unwrap();
+
+    println!("values len = {}", value.len());
+    let mut file = File::create("../tmp/历史行情数据-东财.json").unwrap();
+    file.write_all(serde_json::to_string_pretty(&value).unwrap().as_bytes())
+        .unwrap();
+}
+
+async fn test_retry_api_data() -> anyhow::Result<Vec<Value>> {
+    async fn test_get_api_data() -> anyhow::Result<Vec<Value>> {
+        let res = TEST_HTTP_CLIENT
+            .get(with_base_url("/stock_zh_a_hist"))
+            .query(&[
+                ("symbol", "000088"),
+                ("period", "daily"),
+                ("start_date", "20250421"),
+                ("end_date", "20250425"),
+                ("adjust", ""),
+            ])
+            .send()
+            .await?
+            .text()
+            .await?;
+
+        let value: Vec<Value> = serde_json::from_str(&res).unwrap();
+        Ok(value)
+    }
+
+    let backoff = ExponentialBackoff {
+        initial_interval: Duration::from_millis(100), // 第一次失败后100ms重试
+        randomization_factor: 0.5,                    // 加入一定的抖动，避免雪崩
+        multiplier: 2.0,                              // 每次间隔翻倍
+        max_interval: Duration::from_secs(1),         // 单次最大间隔1秒
+        max_elapsed_time: Some(Duration::from_secs(3)), // 总最大重试时间3秒
+        ..Default::default()
+    };
+
+    Ok(backoff::future::retry(backoff, || async { Ok(test_get_api_data().await?) }).await?)
+}
+
+#[tokio::test]
+async fn test_retry1() {
+    let result = test_retry_api_data().await;
+
+    match result {
+        Ok(value) => println!("value = {:#?}", value),
+        Err(err) => println!("err = {}", err),
+    }
 }
 
 #[tokio::test]
@@ -51,7 +98,7 @@ async fn test_stock_zh_index_spot_em() {
     ];
 
     for param in params {
-        let res = HTTP_CLIENT
+        let res = TEST_HTTP_CLIENT
             .get(with_base_url("/stock_zh_index_spot_em"))
             .query(&[("symbol", param)])
             .send()
@@ -68,7 +115,7 @@ async fn test_stock_zh_index_spot_em() {
 
 #[tokio::test]
 async fn test_stock_zh_index_spot_sina() {
-    let res = HTTP_CLIENT
+    let res = TEST_HTTP_CLIENT
         .get(with_base_url("/stock_zh_index_spot_sina"))
         .send()
         .await
@@ -86,7 +133,7 @@ async fn test_stock_zh_index_spot_sina() {
 
 #[tokio::test]
 async fn test_stock_zh_index_daily() {
-    let res = HTTP_CLIENT
+    let res = TEST_HTTP_CLIENT
         .get(with_base_url("/stock_zh_index_daily"))
         .query(&[("symbol", "sz399552")])
         .send()
@@ -106,7 +153,7 @@ async fn test_stock_zh_index_daily() {
 
 #[tokio::test]
 async fn test_index_option_50etf_qvix() {
-    let values: Vec<Value> = HTTP_CLIENT
+    let values: Vec<Value> = TEST_HTTP_CLIENT
         .get(with_base_url("/index_option_50etf_qvix"))
         .send()
         .await
@@ -126,7 +173,7 @@ async fn test_index_option_50etf_qvix() {
 
 #[tokio::test]
 async fn test_stock_hsgt_fund_flow_summary_em() {
-    let values: Vec<Value> = HTTP_CLIENT
+    let values: Vec<Value> = TEST_HTTP_CLIENT
         .get(with_base_url("/stock_hsgt_fund_flow_summary_em"))
         .send()
         .await
@@ -156,7 +203,7 @@ async fn test_stock_hsgt_hist_em() {
     ];
 
     for symbol in symbols {
-        let values: Vec<Value> = HTTP_CLIENT
+        let values: Vec<Value> = TEST_HTTP_CLIENT
             .get(with_base_url("/stock_hsgt_hist_em"))
             .query(&[("symbol", symbol)])
             .send()
@@ -190,7 +237,7 @@ async fn test_stock_hsgt_hist_em() {
 
 #[tokio::test]
 async fn test_stock_zt_pool_em() {
-    let res: Vec<Value> = HTTP_CLIENT
+    let res: Vec<Value> = TEST_HTTP_CLIENT
         .get(with_base_url("/stock_zt_pool_em"))
         .query(&[("date", "20250411")])
         .send()
@@ -211,7 +258,7 @@ async fn test_stock_zt_pool_em() {
 
 #[tokio::test]
 async fn test_stock_sse_summary() {
-    let res: Vec<Value> = HTTP_CLIENT
+    let res: Vec<Value> = TEST_HTTP_CLIENT
         .get(with_base_url("/stock_sse_deal_daily"))
         .query(&[("date", "20250221")])
         .send()
@@ -232,7 +279,7 @@ async fn test_stock_sse_summary() {
 
 #[tokio::test]
 async fn test_stock_szse_summary() {
-    let res: Vec<Value> = HTTP_CLIENT
+    let res: Vec<Value> = TEST_HTTP_CLIENT
         .get(with_base_url("/stock_szse_summary"))
         .query(&[("date", "20250221")])
         .send()

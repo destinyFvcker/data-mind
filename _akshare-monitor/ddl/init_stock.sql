@@ -56,6 +56,7 @@ SETTINGS index_granularity = 8192;
 -- 东方财富-沪深京 A 股日频率数据; 历史数据按日频率更新, 当日收盘价在收盘后获取
 CREATE TABLE IF NOT EXISTS stock_zh_a_hist
 (
+    `adj_type` Enum8('None' = 0, 'Forward' = 1, 'Backward' = 2),
     `code` LowCardinality(String),
     `open` Float64,
     `close` Float64,
@@ -68,12 +69,10 @@ CREATE TABLE IF NOT EXISTS stock_zh_a_hist
     `change_percentage` Float64,
     `change_amount` Float64,
     `date` Date,
-    -- `ts` DateTime64(3, 'Asia/Shanghai'),
-    `adj_type` Enum8('None' = 0, 'Forward' = 1, 'Backward' = 2)
+    `ts` DateTime64(3, 'Asia/Shanghai')
 )
 ENGINE = ReplacingMergeTree
-PARTITION BY toYYYYMM(date)
-ORDER BY (date, code);
+ORDER BY (date, code, adj_type);
 
 -- 东方财富网-数据中心-资金流向-沪深港通资金流向-沪深港通历史数据
 CREATE TABLE IF NOT EXISTS stock_hsgt_hist_em
