@@ -77,21 +77,21 @@ ORDER BY (date, code, adj_type);
 -- 东方财富网-数据中心-资金流向-沪深港通资金流向-沪深港通历史数据
 CREATE TABLE IF NOT EXISTS stock_hsgt_hist_em
 (
-    `flow_dir` Enum8('Northbound' = 0, 'Southbound' = 1),
-    `buy_amount` Float64,
-    `sell_amount` Float64,
-    `historical_net_buy_amount` Float64,
-    `daily_balance` Float64,
-    `daily_net_buy_amount` Float64,
-    `daily_inflow` Float64,
-    `holding_market_value` Float64,
-    `hs300_index` Float64,
-    `hs300_change_percent` Float64,
-    `leading_stock_name` String,
-    `leading_stock_code` String,
-    `leading_stock_change_percent` Float64,
-    `date` Date,
-    `ts` DateTime64(3, 'Asia/Shanghai')
+    `flow_dir` Enum8('Northbound' = 0, 'Southbound' = 1), -- 资金流动方向(南向/北向)
+    `buy_amount` Float64, -- 买入成交额，单位：亿元
+    `sell_amount` Float64, -- 卖出成交额，单位：亿元
+    `historical_net_buy_amount` Float64, -- 历史累计净买额，单位：万亿元
+    `daily_balance` Float64, -- 当日余额，单位：亿元
+    `daily_net_buy_amount` Float64, -- 当日成交净买额，单位：亿元
+    `daily_inflow` Float64, -- 当日资金流入，单位：亿元
+    `holding_market_value` Float64, -- 持股市值，单位：元
+    `hs300_index` Float64, -- 沪深300指数点位
+    `hs300_change_percent` Float64, -- 沪深300指数涨跌幅，单位：%
+    `leading_stock_name` String, -- 领涨股名称
+    `leading_stock_code` String, -- 领涨股代码，例如 "600198.SH"
+    `leading_stock_change_percent` Float64, -- 领涨股涨跌幅，单位：%
+    `date` Date, -- 数据产生日期
+    `ts` DateTime64(3, 'Asia/Shanghai') -- 数据拉取日期
 )
 ENGINE = ReplacingMergeTree(ts)
 ORDER BY (date, flow_dir);
@@ -99,24 +99,24 @@ ORDER BY (date, flow_dir);
 -- 东方财富网-行情中心-涨停板行情-涨停股池
 create table if not EXISTS stock_zt_pool_em
 (
-    `code` String,
-    `name` String,
-    `lockup_funds` Float64,
-    `serial_number` UInt32,
-    `total_market_value` Float64,
-    `turnover` Float64,
-    `industry` String,
-    `turnover_rate` Float64,
-    `last_lockup_time` String,
-    `latest_price` Float64,
-    `circulating_market_value` Float64,
-    `limit_up_statistics` String,
-    `price_change_percentage` Float64,
-    `failed_lockup_count` UInt32,
-    `consecutive_limit_ups` UInt32,
-    `first_lockup_time` String,
-    `date` Date,
-    `ts` DateTime64(3, 'Asia/Shanghai')
+    `code` String, -- 股票代码
+    `name` String, -- 股票名称
+    `lockup_funds` Float64, -- 封板所需资金（单位：元）
+    `serial_number` UInt32, -- 序号（基本无意义）
+    `total_market_value` Float64, -- 总市值（单位：元）
+    `turnover` Float64, -- 成交额（单位：元）
+    `industry` String, -- 所属行业
+    `turnover_rate` Float64, -- 换手率（百分比）
+    `last_lockup_time` String, -- 最后封板时间（格式：HHMMSS）
+    `latest_price` Float64, -- 最新价格
+    `circulating_market_value` Float64, -- 流通市值（单位：元）
+    `limit_up_statistics` String, -- 涨停统计（例如 "1/1"）
+    `price_change_percentage` Float64, -- 涨跌幅（百分比）
+    `failed_lockup_count` UInt32, -- 炸板次数（封板失败次数）
+    `consecutive_limit_ups` UInt32, -- 连续涨停板数量
+    `first_lockup_time` String, -- 首次封板时间（格式：HHMMSS）
+    `date` Date, -- 数据生成时间
+    `ts` DateTime64(3, 'Asia/Shanghai') -- 数据收集时间
 )
 ENGINE = ReplacingMergeTree(ts)
 order by (date, code);
