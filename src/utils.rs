@@ -1,6 +1,22 @@
 //! 工具类处理函数
 
+use std::time::Duration;
+
+use backoff::ExponentialBackoff;
 use sqlx::{Executor, MySqlPool};
+
+/// 获取一个比较合理的指数退避重拾策略
+#[inline]
+pub fn config_backoff(max_interval: u64, max_elapsed_time: u64) -> ExponentialBackoff {
+    ExponentialBackoff {
+        initial_interval: Duration::from_millis(100), // 第一次失败后100ms重试
+        randomization_factor: 0.5,                    // 加入一定的抖动，避免雪崩
+        multiplier: 2.0,                              // 每次间隔翻倍
+        max_interval: Duration::from_secs(max_interval), // 单次最大间隔1秒
+        max_elapsed_time: Some(Duration::from_secs(max_elapsed_time)), // 总最大重试时间12秒
+        ..Default::default()
+    }
+}
 
 /// 将类似于ISO 8601标准表达方式的时间字符串 2025-04-22T00:00:00.000
 /// 截取出 T 前面的 yyyy-mm-dd 部分，方便转换为NaiveDate
