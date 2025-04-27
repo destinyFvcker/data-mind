@@ -117,7 +117,7 @@ impl StockZhAHistMonitor {
         end_date: &str,
         adj_type: StockAdjustmentType,
     ) -> anyhow::Result<Vec<repository::StockZhAHist>> {
-        let backoff_s = config_backoff(3, 30);
+        let backoff_s = config_backoff(5, 30);
         let ch_data: Vec<repository::StockZhAHist> = backoff::future::retry(backoff_s, || async {
             let api_data: Vec<schema::akshare::StockZhAHist> = self
                 .ext_res
@@ -147,19 +147,19 @@ impl StockZhAHistMonitor {
         })
         .await?;
 
-        // use std::io::Write;
-        // let mut file = std::fs::OpenOptions::new()
-        //     .create(true)
-        //     .append(true)
-        //     .open("../tmp/output.log")?;
-        // let now = Utc::now();
-        // writeln!(
-        //     file,
-        //     "time = {:?}, code = {}, adj_type = {} processed",
-        //     now,
-        //     code,
-        //     adj_type.to_str()
-        // );
+        use std::io::Write;
+        let mut file = std::fs::OpenOptions::new()
+            .create(true)
+            .append(true)
+            .open("../tmp/output.log")?;
+        let now = Utc::now();
+        writeln!(
+            file,
+            "time = {:?}, code = {}, adj_type = {} processed",
+            now,
+            code,
+            adj_type.to_str()
+        );
 
         Ok(ch_data)
     }
@@ -196,7 +196,7 @@ impl StockZhAHistMonitor {
         let codes = get_distinct_code(&self.ext_res.ch_client).await?;
         println!("codes length = {}", codes.len());
         let now_date = Utc::now().with_timezone(&CST);
-        let start_date = now_date - chrono::Duration::days(7);
+        let start_date = now_date - chrono::Duration::days(30);
 
         let end = now_date
             .format("%Y%m%d")
