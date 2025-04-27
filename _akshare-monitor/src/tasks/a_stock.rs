@@ -147,19 +147,19 @@ impl StockZhAHistMonitor {
         })
         .await?;
 
-        use std::io::Write;
-        let mut file = std::fs::OpenOptions::new()
-            .create(true)
-            .append(true)
-            .open("../tmp/output.log")?;
-        let now = Utc::now();
-        writeln!(
-            file,
-            "time = {:?}, code = {}, adj_type = {} processed",
-            now,
-            code,
-            adj_type.to_str()
-        );
+        // use std::io::Write;
+        // let mut file = std::fs::OpenOptions::new()
+        //     .create(true)
+        //     .append(true)
+        //     .open("../tmp/output.log")?;
+        // let now = Utc::now();
+        // writeln!(
+        //     file,
+        //     "time = {:?}, code = {}, adj_type = {} processed",
+        //     now,
+        //     code,
+        //     adj_type.to_str()
+        // );
 
         Ok(ch_data)
     }
