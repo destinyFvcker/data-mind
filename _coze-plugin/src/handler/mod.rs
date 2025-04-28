@@ -1,3 +1,2 @@
+mod a_index;
 mod a_stock;
-
-pub use a_stock::*;
