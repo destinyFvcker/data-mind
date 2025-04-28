@@ -194,7 +194,7 @@ impl StockZhAHistMonitor {
     /// 收集东方财富-沪深京 A 股日频率数据
     pub async fn collect_data(&self) -> anyhow::Result<()> {
         let codes = get_distinct_code(&self.ext_res.ch_client).await?;
-        println!("codes length = {}", codes.len());
+        // println!("codes length = {}", codes.len());
         let now_date = Utc::now().with_timezone(&CST);
         let start_date = now_date - chrono::Duration::days(30);
 
