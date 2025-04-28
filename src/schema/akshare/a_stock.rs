@@ -217,3 +217,21 @@ pub struct StockZtPoolEm {
     #[serde(rename(deserialize = "首次封板时间"))]
     pub first_lockup_time: String,
 }
+
+/// json schema -> 财经内容精选  
+/// 目标地址: https://cxdata.caixin.com/pc/  
+/// 描述: 财新网-财新数据通-内容精选  
+/// 限量: 返回所有历史新闻数据
+#[derive(Debug, Deserialize)]
+pub struct StockNewsMainCx {
+    /// 新闻被精选、推送或整理到内容库的时间。格式通常是 yyyy-MM-dd HH:mm。
+    pub interval_time: String,
+    /// 新闻的正式发布时间，即新闻内容原文在财新网等发布的时间。格式是完整的 yyyy-MM-dd HH:mm:ss.sss。
+    pub pub_time: String,
+    /// 新闻的摘要内容，对新闻正文的简要概括，便于快速了解新闻主旨。
+    pub summary: String,
+    /// 新闻的主题标签，通常由几个关键词组成，归纳了该新闻的主要话题或核心内容。
+    pub tag: String,
+    /// 新闻的详情链接，点击可以跳转到财新网对应的新闻完整正文页面。
+    pub url: String,
+}
