@@ -813,6 +813,7 @@ dependencies = [
  "futures",
  "reqwest",
  "serde",
+ "serde_json",
  "time",
  "utoipa",
  "utoipa-actix-web",
@@ -922,15 +923,18 @@ dependencies = [
 name = "data_mind"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
  "backoff",
  "chrono",
  "clickhouse",
  "futures",
+ "reqwest",
  "serde",
  "serde_json",
  "serde_repr",
  "sqlx",
  "strum",
+ "utoipa",
 ]
 
 [[package]]
