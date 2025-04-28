@@ -10,6 +10,7 @@ edition = "2024"
 
 [dependencies]
 serde.workspace = true
+serde_json.workspace = true
 ftlog.workspace = true
 clickhouse.workspace = true
 anyhow.workspace = true
