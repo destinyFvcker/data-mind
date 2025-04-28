@@ -119,4 +119,19 @@ create table if not EXISTS stock_zt_pool_em
     `ts` DateTime64(3, 'Asia/Shanghai')
 )
 ENGINE = ReplacingMergeTree(ts)
-order by (date, code)
+order by (date, code);
+
+-- 目标地址: https://cxdata.caixin.com/pc/  
+-- 描述: 财新网-财新数据通-内容精选  
+-- 限量: 返回所有历史新闻数据
+CREATE TABLE IF NOT EXISTS stock_news_main_cx
+(
+    `interval_time` String,
+    `pub_time` DateTime64(3, 'Asia/Shanghai'),
+    `summary` String,
+    `tag` String,
+    `url` String,
+    `ts` DateTime64(3, 'Asia/Shanghai')
+)
+ENGINE = ReplacingMergeTree(ts)
+ORDER BY (pub_time, summary, tag, url);

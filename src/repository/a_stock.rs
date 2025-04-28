@@ -434,3 +434,66 @@ impl StockZtPoolEm {
         }
     }
 }
+
+// --------------------------------------------------------------------------
+
+/// clickhouse schema -> 财经内容精选  
+/// 目标地址: https://cxdata.caixin.com/pc/  
+/// 描述: 财新网-财新数据通-内容精选  
+/// 限量: 返回所有历史新闻数据
+#[derive(Debug, Serialize, Deserialize, Row)]
+pub struct StockNewsMainCx {
+    /// 新闻被精选、推送或整理到内容库的时间。格式通常是 yyyy-MM-dd HH:mm。
+    // #[serde(with = "clickhouse::serde::chrono::datetime")]
+    pub interval_time: String,
+    /// 新闻的正式发布时间，即新闻内容原文在财新网等发布的时间。格式是完整的 yyyy-MM-dd HH:mm:ss.sss。
+    #[serde(with = "clickhouse::serde::chrono::datetime64::millis")]
+    pub pub_time: DateTime<Utc>,
+    /// 新闻的摘要内容，对新闻正文的简要概括，便于快速了解新闻主旨。
+    pub summary: String,
+    /// 新闻的主题标签，通常由几个关键词组成，归纳了该新闻的主要话题或核心内容。
+    pub tag: String,
+    /// 新闻的详情链接，点击可以跳转到财新网对应的新闻完整正文页面。
+    pub url: String,
+    /// 数据收集时间，用于排除重复数据
+    #[serde(with = "clickhouse::serde::chrono::datetime64::millis")]
+    pub ts: DateTime<Utc>,
+}
+
+impl StockNewsMainCx {
+    pub fn from_with_ts(mut value: schema::akshare::StockNewsMainCx, ts: DateTime<Utc>) -> Self {
+        value.pub_time.push_str(" +08:00");
+
+        let pub_time = DateTime::parse_from_str(&value.pub_time, "%Y-%m-%d %H:%M:%S%.3f %z")
+            .unwrap()
+            .with_timezone(&Utc);
+
+        Self {
+            interval_time: value.interval_time,
+            pub_time,
+            summary: value.summary,
+            tag: value.tag,
+            url: value.url,
+            ts,
+        }
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use chrono::{DateTime, Utc};
+
+    #[test]
+    fn test_parse_time_from_str() {
+        let interval_time_str = "2025-04-23 12:30 +08:00";
+        let interval_time =
+            DateTime::parse_from_str(interval_time_str, "%Y-%m-%d %H:%M %z").unwrap();
+        let utc_time: DateTime<Utc> = interval_time.with_timezone(&Utc);
+        println!("interval_time = {interval_time:?}, utc time = {utc_time:?}");
+
+        let pub_time_str = "2025-04-23 04:30:17.395 +08:00";
+        let pub_time = DateTime::parse_from_str(pub_time_str, "%Y-%m-%d %H:%M:%S%.3f %z").unwrap();
+        let utc_time: DateTime<Utc> = pub_time.with_timezone(&Utc);
+        println!("interval_time = {pub_time:?}, utc time = {utc_time:?}");
+    }
+}

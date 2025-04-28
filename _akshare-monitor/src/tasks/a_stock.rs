@@ -55,6 +55,15 @@ pub(super) async fn start_a_stock_tasks(ext_res: ExternalResource) {
     SCHEDULE_TASK_MANAGER
         .add_task(stock_zt_pool_em_monitor)
         .await;
+
+    let stock_news_main_cx_monitor = StockNewsMainCxMonitor {
+        data_url: with_base_url("/stock_news_main_cx"),
+        data_table: "stock_news_main_cx".to_owned(),
+        ext_res: ext_res.clone(),
+    };
+    SCHEDULE_TASK_MANAGER
+        .add_task(stock_news_main_cx_monitor)
+        .await;
 }
 
 /// 收集东方财富网-沪深京 A 股-实时行情数据
@@ -365,6 +374,47 @@ impl StockZtPoolEmMonitor {
     }
 }
 
+// ------------------------------------------------------------------------------------
+
+pub struct StockNewsMainCxMonitor {
+    data_url: String,
+    data_table: String,
+    ext_res: ExternalResource,
+}
+
+impl StockNewsMainCxMonitor {
+    async fn get_api_data(&self) -> anyhow::Result<Vec<repository::StockNewsMainCx>> {
+        let res: Vec<schema::akshare::StockNewsMainCx> = self
+            .ext_res
+            .http_client
+            .get(with_base_url("/stock_news_main_cx"))
+            .send()
+            .await?
+            .error_for_status()?
+            .json()
+            .await?;
+
+        let now = Utc::now();
+
+        Ok(res
+            .into_iter()
+            .map(|value| repository::StockNewsMainCx::from_with_ts(value, now))
+            .collect())
+    }
+
+    pub async fn collect_data(&self) -> anyhow::Result<()> {
+        let rows = self.get_api_data().await?;
+
+        let mut inserter = self.ext_res.ch_client.inserter(&self.data_table)?;
+        for row in rows {
+            inserter.write(&row)?;
+        }
+        inserter.end().await?;
+
+        Ok(())
+    }
+}
+
 #[cfg(test)]
 mod test {
     use std::{io::Read, os::fd, str::FromStr};
@@ -390,7 +440,7 @@ mod test {
             "{:?}",
             Utc::now().with_timezone(&CST).format("%Y%m%d").to_string()
         );
-        let schedule = cron::Schedule::from_str("0 0 17 * * MON-FRI").unwrap();
+        let schedule = cron::Schedule::from_str("0 30 9 * * *").unwrap();
         for next in schedule.upcoming(CST).take(10) {
             println!("{:?}", next);
         }
@@ -459,6 +509,22 @@ mod test {
         };
 
         stock_zt_pool_em_monitor.collect_data().await.unwrap();
+    }
+
+    #[tokio::test]
+    async fn test_stock_news_main_cx_monitor() {
+        let ext_res = ExternalResource {
+            ch_client: TEST_CH_CLIENT.clone(),
+            http_client: TEST_HTTP_CLIENT.clone(),
+        };
+
+        let stock_news_main_cx_monitor = StockNewsMainCxMonitor {
+            data_url: with_base_url("/stock_news_main_cx"),
+            data_table: "stock_news_main_cx".to_owned(),
+            ext_res,
+        };
+
+        stock_news_main_cx_monitor.collect_data().await.unwrap();
     }
 
     #[test]

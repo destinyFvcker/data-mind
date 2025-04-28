@@ -8,7 +8,8 @@ use super::{
     TRADE_TIME_CRON,
     a_index::{IndexOption50EtfQvixMonitor, StockZhIndexDailyMonitor},
     a_stock::{
-        RealTimeStockMonitor, StockHsgtHistEmMonitor, StockZhAHistMonitor, StockZtPoolEmMonitor,
+        RealTimeStockMonitor, StockHsgtHistEmMonitor, StockNewsMainCxMonitor, StockZhAHistMonitor,
+        StockZtPoolEmMonitor,
     },
     in_trade_time,
 };
@@ -122,6 +123,26 @@ impl Schedulable for StockZtPoolEmMonitor {
             name: "stock_zt_pool_em".to_owned(),
             desc: "东方财富网-行情中心-涨停板行情-涨停股池".to_owned(),
             cron_expr: "0 30 15 * * MON-FRI".to_owned(),
+            tag: Some(ScheduleTaskType::AStock),
+        }
+    }
+
+    fn execute(
+        self: std::sync::Arc<Self>,
+    ) -> Box<dyn Future<Output = anyhow::Result<()>> + Send + 'static> {
+        Box::new(async move {
+            self.collect_data().await?;
+            Ok(())
+        })
+    }
+}
+
+impl Schedulable for StockNewsMainCxMonitor {
+    fn gen_meta(&self) -> TaskMeta {
+        TaskMeta {
+            name: "stock_news_main_cx".to_owned(),
+            desc: "财新网-财新数据通-内容精选".to_owned(),
+            cron_expr: "0 30 9 * * *".to_owned(),
             tag: Some(ScheduleTaskType::AStock),
         }
     }
