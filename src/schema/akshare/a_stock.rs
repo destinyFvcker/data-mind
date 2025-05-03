@@ -219,6 +219,37 @@ pub struct StockZtPoolEm {
     pub first_lockup_time: String,
 }
 
+/// 接口: stock_news_em  
+/// 目标地址: https://so.eastmoney.com/news/s  
+/// 描述: 东方财富指定个股的新闻资讯数据  
+/// 限量: 指定 symbol 当日最近 100 条新闻资讯数据
+#[derive(Debug, Deserialize, Serialize)]
+pub struct StockNewsEm {
+    /// 关键词，例如股票代码（如 "300059"）
+    #[serde(rename(deserialize = "关键词"))]
+    pub keyword: String,
+
+    /// 新闻发布时间（格式：YYYY-MM-DD HH:MM:SS）
+    #[serde(rename(deserialize = "发布时间"))]
+    pub publish_time: String,
+
+    /// 文章来源，例如“人民财讯”
+    #[serde(rename(deserialize = "文章来源"))]
+    pub source: String,
+
+    /// 新闻正文内容
+    #[serde(rename(deserialize = "新闻内容"))]
+    pub content: String,
+
+    /// 新闻标题
+    #[serde(rename(deserialize = "新闻标题"))]
+    pub title: String,
+
+    /// 新闻链接 URL
+    #[serde(rename(deserialize = "新闻链接"))]
+    pub url: String,
+}
+
 /// json schema -> 财经内容精选  
 /// 目标地址: https://cxdata.caixin.com/pc/  
 /// 描述: 财新网-财新数据通-内容精选  
