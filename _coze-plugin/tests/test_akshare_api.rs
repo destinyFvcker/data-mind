@@ -195,3 +195,22 @@ async fn test_stock_rank_cxsl_ths() {
     file.write_all(serde_json::to_string_pretty(&res).unwrap().as_bytes())
         .unwrap();
 }
+
+#[actix_web::test]
+async fn test_stock_news_em() {
+    let res: Vec<schema::akshare::StockNewsEm> = TEST_HTTP_CLIENT
+        .get(with_base_url("/stock_news_em"))
+        .query(&[("symbol", "300059")])
+        .send()
+        .await
+        .unwrap()
+        .json()
+        .await
+        .unwrap();
+
+    println!("res len = {}", res.len());
+
+    let mut file = File::create("../tmp/个股新闻.json").unwrap();
+    file.write_all(serde_json::to_string_pretty(&res).unwrap().as_bytes())
+        .unwrap();
+}
