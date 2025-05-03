@@ -1,0 +1,3 @@
+[submodule "dm-proto"]
+	path = dm-proto
+	url = git@github.com:destinyFvcker/dm-proto.git
