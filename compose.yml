@@ -131,6 +131,7 @@ services:
             KAFKA_CLUSTERS_0_NAME: local # 集群名称
             KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:29092 # Kafka服务器地址
             KAFKA_CLUSTERS_0_ZOOKEEPER: zookeeper:2181 # ZooKeeper地址
+            SERVER_SERVLET_CONTEXT_PATH: /kafka-ui
         networks:
             - monitoring
 
