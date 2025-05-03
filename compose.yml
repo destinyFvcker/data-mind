@@ -121,7 +121,7 @@ services:
 
     # Kafka管理界面（可选组件）
     kafka-ui:
-        image: provectuslabs/kafka-ui:latest
+        image: provectuslabs/kafka-ui:v0.7.2
         container_name: kafka-ui
         depends_on:
             - kafka
@@ -132,6 +132,9 @@ services:
             KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:29092 # Kafka服务器地址
             KAFKA_CLUSTERS_0_ZOOKEEPER: zookeeper:2181 # ZooKeeper地址
             SERVER_SERVLET_CONTEXT_PATH: /kafka-ui
+            AUTH_TYPE: "LOGIN_FORM"
+            SPRING_SECURITY_USER_NAME: ${KAFKA_UI_USER}
+            SPRING_SECURITY_USER_PASSWORD: ${KAFKA_UI_PASSWORD}
         networks:
             - monitoring
 
