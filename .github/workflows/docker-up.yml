@@ -53,4 +53,4 @@ jobs:
                       echo "CLICKHOUSE_PASSWORD=${{ secrets.CLICKHOUSE_PASSWORD }}" >>.env
                       echo "REDIS_PASSWORD=${{ secrets.REDIS_PASSWORD }}" >>.env
                       echo "KAFKA_UI_USER=${{ secrets.KAFKA_UI_USER }}" >> .env
-                      echo "KAFKA_UI_PASSWORD=${{ secrets.KAFKA_UI_PASSWORD }}"
+                      echo "KAFKA_UI_PASSWORD=${{ secrets.KAFKA_UI_PASSWORD }}" >> .env
