@@ -164,7 +164,7 @@ impl TaskManager {
                             target: "scheduler::info",
                             "[meta = {:?}] 下次执行时间: {}",
                             task_meta,
-                            next.format("%Y-%m-%d %H:%M")
+                            next.format("%Y-%m-%d %H:%M:%S")
                         );
                         if let Ok(sleep_time) = (next - cst_now()).to_std() {
                             tokio::time::sleep(sleep_time).await;
@@ -175,7 +175,7 @@ impl TaskManager {
                         }
                         Box::into_pin(schedulable.clone().execute())
                             .await
-                            .map_err(
+                            .inspect_err(
                                 |err| ftlog::error!("An error occurred while collecting data, task = {:?}, error = {:?}", schedulable.gen_meta(), err)
                             );
                     }

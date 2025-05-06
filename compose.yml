@@ -1,7 +1,7 @@
 services:
     # Grafana 服务配置
     grafana:
-        image: grafana/grafana:latest
+        image: grafana/grafana:12.0.0
         container_name: grafana
         ports:
             - "3000:3000"
@@ -13,7 +13,7 @@ services:
             - GF_USERS_ALLOW_SIGN_UP=false
             - GF_SERVER_DOMAIN=destinyfvcker.cn
             - GF_SERVER_ROOT_URL=https://destinyfvcker.cn/grafana
-            - GF_SERVER_SERVE_FROM_SUB_PATH=true
+            # - GF_SERVER_SERVE_FROM_SUB_PATH=true
         restart: unless-stopped
         networks:
             - monitoring
