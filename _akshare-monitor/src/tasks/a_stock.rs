@@ -75,7 +75,7 @@ pub(super) struct RealTimeStockMonitor {
 
 impl RealTimeStockMonitor {
     pub async fn collect_data(&self, ts: chrono::DateTime<Utc>) -> anyhow::Result<()> {
-        let backoff_s = config_backoff(2, 10);
+        let backoff_s = config_backoff(5, 20);
 
         let result: Vec<schema::akshare::RealtimeStockMarketRecord> =
             backoff::future::retry(backoff_s, || async {
@@ -251,7 +251,7 @@ impl StockHsgtHistEmMonitor {
         &self,
         flow_dir: FlowDirection,
     ) -> anyhow::Result<Vec<repository::StockHsgtHistEm>> {
-        let backoff_s = config_backoff(2, 5);
+        let backoff_s = config_backoff(5, 30);
         let api_data = backoff::future::retry(backoff_s, || async {
             let api_data: Vec<schema::akshare::StockHsgtHistEm> = self
                 .ext_res
@@ -315,7 +315,7 @@ impl StockZtPoolEmMonitor {
         date: NaiveDate,
     ) -> anyhow::Result<Vec<repository::StockZtPoolEm>> {
         let formatted = date.format("%Y%m%d").to_string();
-        let backoff_s = config_backoff(2, 5);
+        let backoff_s = config_backoff(5, 30);
 
         let api_data = backoff::future::retry(backoff_s, || async {
             let api_data: Vec<schema::akshare::StockZtPoolEm> = self
