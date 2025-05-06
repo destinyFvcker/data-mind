@@ -85,6 +85,7 @@ impl RealTimeStockMonitor {
                     .get(&self.data_url)
                     .send()
                     .await?
+                    .error_for_status()?
                     .json()
                     .await
                     .map_err(backoff::Error::Permanent)?;
