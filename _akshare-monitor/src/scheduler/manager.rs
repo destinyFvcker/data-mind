@@ -173,7 +173,11 @@ impl TaskManager {
                         if Box::into_pin(schedulable.clone().cancel_or_not()).await {
                             break;
                         }
-                        Box::into_pin(schedulable.clone().execute()).await;
+                        Box::into_pin(schedulable.clone().execute())
+                            .await
+                            .map_err(
+                                |err| ftlog::error!("An error occurred while collecting data, task = {:?}, error = {:?}", schedulable.gen_meta(), err)
+                            );
                     }
                 }  => {}
             }
