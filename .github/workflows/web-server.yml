@@ -72,7 +72,7 @@ jobs:
                   host: ${{ secrets.ALIYUN_HOST }}
                   username: ${{ secrets.ALIYUN_USER }}
                   key: ${{ secrets.ALIYUN_SSH_KEY }}
-                  envs: BASE_PATH,APP_NAME,CLICKHOUSE_USER,CLICKHOUSE_PASSWORD
+                  envs: BASE_PATH,APP_NAME,CLICKHOUSE_USER,CLICKHOUSE_PASSWORD,MYSQL_USER,MYSQL_PASSWORD,JWT_SECRET_KEY,GITHUB_SECRET
                   # 设置环境变量并执行脚本
                   script: |
                       cd ${BASE_PATH}${APP_NAME}
