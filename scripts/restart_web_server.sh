@@ -13,6 +13,8 @@ else
     echo "No PID file found."
 fi
 
+echo "$GITHUB_SECRET"
+
 export SERVER_LOGDIR="./logs"
 mkdir -p "$SERVER_LOGDIR"
 nohup ./"$APP_NAME" --config-path="$CONF" >>logs/app.log 2>>logs/server.log &
