@@ -8,3 +8,8 @@ port = 8123
 database = "akshare"
 # user = ? (in env)
 # password = ? (in env)
+
+[kafka]
+broker = "localhost:9092"
+topic = "grafana_alarm"
+partition = 0

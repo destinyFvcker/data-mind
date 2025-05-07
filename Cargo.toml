@@ -6,6 +6,7 @@ edition = "2021"
 [workspace]
 members = [
     ".",
+    "dm-proto",
     "_akshare-monitor",
     "_coze-plugin",
     "_web-server",
@@ -73,3 +74,6 @@ strum.workspace = true
 futures.workspace = true
 sqlx.workspace = true
 backoff.workspace = true
+uuid.workspace = true
+rskafka.workspace = true
+dm_proto = { path = "./dm-proto" }

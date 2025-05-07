@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use config::INIT_CONFIG;
 use data_mind::utils::perform_ch_ddl;
 use ftlog::{
@@ -6,7 +8,7 @@ use ftlog::{
 };
 use handler::get_app;
 use init::ExternalResource;
-use poem::{Server, listener::TcpListener};
+use poem::{EndpointExt, Server, listener::TcpListener};
 
 mod config;
 mod handler;
@@ -30,6 +32,15 @@ async fn main() -> anyhow::Result<()> {
                 .expire(Duration::days(2))
                 .build(),
         )
+        .filter("webhook::log", "webhook_log", LevelFilter::Info)
+        .appender(
+            "webhook_log",
+            FileAppender::builder()
+                .path(format!("{}/grafana_alarm.log", INIT_CONFIG.server.logdir))
+                .rotate(Period::Day)
+                .expire(Duration::days(7))
+                .build(),
+        )
         .max_log_level(ftlog::LevelFilter::Info)
         .time_format(time_format)
         .root(
@@ -43,6 +54,14 @@ async fn main() -> anyhow::Result<()> {
         .expect("logger build or set failed");
 
     let ext_res = ExternalResource::init();
+    let kafka_client = Arc::new(
+        data_mind::utils::connect_kafka(
+            &INIT_CONFIG.kafka.broker,
+            &INIT_CONFIG.kafka.topic,
+            INIT_CONFIG.kafka.partition,
+        )
+        .await,
+    );
 
     perform_ddl(&ext_res.ch_client).await;
     scheduler::scheduler_start_up(ext_res).await?;
@@ -52,7 +71,7 @@ async fn main() -> anyhow::Result<()> {
         "0.0.0.0:{}",
         INIT_CONFIG.server.port
     )))
-    .run(get_app())
+    .run(get_app().data(kafka_client))
     .await?;
 
     Ok(())

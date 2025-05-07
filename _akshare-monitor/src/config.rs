@@ -16,13 +16,13 @@ struct Args {
 }
 
 #[derive(Debug, Deserialize)]
-pub struct Server {
+pub struct ServerConfig {
     pub port: u32,
     pub logdir: String,
 }
 
 #[derive(Debug, Deserialize)]
-pub struct Clickhouse {
+pub struct ClickhouseConfig {
     pub host: String,
     pub port: u32,
     pub database: String,
@@ -31,9 +31,17 @@ pub struct Clickhouse {
 }
 
 #[derive(Debug, Deserialize)]
+pub struct KafkaConfig {
+    pub broker: String,
+    pub topic: String,
+    pub partition: i32,
+}
+
+#[derive(Debug, Deserialize)]
 pub struct InitConfig {
-    pub server: Server,
-    pub clickhouse: Clickhouse,
+    pub server: ServerConfig,
+    pub clickhouse: ClickhouseConfig,
+    pub kafka: KafkaConfig,
 }
 
 impl InitConfig {
