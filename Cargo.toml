@@ -60,6 +60,8 @@ redis = { version = "0.30.0", features = [
     "tokio-native-tls-comp",
     "tokio-comp",
 ] }
+serde_bytes = "0.11.17"
+prost = "0.13.5"
 
 [dependencies]
 serde.workspace = true
@@ -76,4 +78,5 @@ sqlx.workspace = true
 backoff.workspace = true
 uuid.workspace = true
 rskafka.workspace = true
+serde_bytes.workspace = true
 dm_proto = { path = "./dm-proto" }

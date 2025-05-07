@@ -62,6 +62,7 @@ async fn main() -> anyhow::Result<()> {
         )
         .await,
     );
+    let clickhouse_client = ext_res.ch_client.clone();
 
     perform_ddl(&ext_res.ch_client).await;
     scheduler::scheduler_start_up(ext_res).await?;
@@ -71,7 +72,7 @@ async fn main() -> anyhow::Result<()> {
         "0.0.0.0:{}",
         INIT_CONFIG.server.port
     )))
-    .run(get_app().data(kafka_client))
+    .run(get_app().data(kafka_client).data(clickhouse_client))
     .await?;
 
     Ok(())
@@ -81,6 +82,7 @@ async fn perform_ddl(ch_client: &clickhouse::Client) {
     let ddls = [
         include_str!("../ddl/init_stock.sql"),
         include_str!("../ddl/init_index.sql"),
+        include_str!("../ddl/init_other.sql"),
     ];
 
     for ddl in ddls {
