@@ -64,6 +64,9 @@ jobs:
               env:
                   CLICKHOUSE_USER: ${{ secrets.WEB_SERVER_CH_USER }}
                   CLICKHOUSE_PASSWORD: ${{ secrets.AK_SHARE_READER_PASSWORD }}
+                  MYSQL_USER: root
+                  MYSQL_PASSWORD: ${{ secrets.MYSQL_ROOT_PASSWORD }}
+                  GITHUB_SECRET: ${{ secrets.MY_GITHUB_SECRET }}
               with:
                   host: ${{ secrets.ALIYUN_HOST }}
                   username: ${{ secrets.ALIYUN_USER }}
