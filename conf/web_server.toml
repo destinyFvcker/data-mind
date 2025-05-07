@@ -20,3 +20,8 @@ database = "data_mind"
 [github]
 client_id = "Ov23lim6oTncg9iWxk1T"
 # secret = ? (in env)
+
+[kafka]
+broker = "localhost:9092"
+topic = "grafana_alarm"
+partition = 0

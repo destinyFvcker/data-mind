@@ -1,8 +1,16 @@
 //! 工具类处理函数
 
-use std::time::Duration;
+use std::{collections::HashSet, sync::Arc, time::Duration};
 
 use backoff::ExponentialBackoff;
+use chrono::DateTime;
+use rskafka::{
+    client::{
+        consumer::{StreamConsumer, StreamConsumerBuilder},
+        partition::{OffsetAt, PartitionClient},
+    },
+    BackoffConfig,
+};
 use sqlx::{Executor, MySqlPool};
 
 /// 获取一个比较合理的指数退避重拾策略
@@ -81,6 +89,71 @@ fn clean_up(raw_ddl_file: &str) -> String {
         .reduce(|s, line| s + " " + &line)
         .map(|str| str.trim().to_owned())
         .unwrap_or("".to_string())
+}
+
+/// 获取从一个固定的时间戳开始消耗的kafka stream
+pub async fn get_kafka_stream(
+    client: Arc<PartitionClient>,
+    start_ts: i64,
+) -> (i64, StreamConsumer) {
+    let start_offset = client
+        .get_offset(OffsetAt::Timestamp(DateTime::from_timestamp_nanos(
+            start_ts,
+        )))
+        .await
+        .unwrap();
+    let latest_offset = client.get_offset(OffsetAt::Latest).await.unwrap();
+
+    let kafka_stream = StreamConsumerBuilder::new(
+        client,
+        rskafka::client::consumer::StartOffset::At(start_offset),
+    )
+    .with_max_batch_size(10_000_000)
+    .build();
+
+    (latest_offset, kafka_stream)
+}
+
+/// 通过指定`broker`、`topic`和`partition`获取一个指定分区对应的client
+pub async fn connect_kafka(
+    broker: &str,
+    topic: &str,
+    partition: i32,
+) -> rskafka::client::partition::PartitionClient {
+    let client = rskafka::client::ClientBuilder::new(vec![broker.to_owned()])
+        .backoff_config(BackoffConfig {
+            deadline: Some(Duration::from_secs(15)),
+            ..Default::default()
+        })
+        .build()
+        .await
+        .unwrap();
+
+    // 假如对应的topic还没有被创建的话，就先进行创建
+    let exist_topics = client
+        .list_topics()
+        .await
+        .unwrap()
+        .into_iter()
+        .map(|t| t.name)
+        .collect::<HashSet<_>>();
+    if !exist_topics.contains(topic) {
+        client
+            .controller_client()
+            .unwrap()
+            .create_topic(topic, 1, 1, 300)
+            .await
+            .unwrap();
+    }
+
+    client
+        .partition_client(
+            topic,
+            partition,
+            rskafka::client::partition::UnknownTopicHandling::Error,
+        )
+        .await
+        .unwrap()
 }
 
 #[cfg(test)]
