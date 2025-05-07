@@ -65,7 +65,7 @@ impl Schedulable for StockZhIndexDailyMonitor {
         TaskMeta {
             name: "stock_zh_index_daily".to_owned(),
             desc: "历史行情数据-新浪, 股票指数的历史数据按日频率更新".to_owned(),
-            cron_expr: "0 20 18 * * MON-FRI".to_owned(),
+            cron_expr: "0 50 18 * * MON-FRI".to_owned(),
             tag: Some(ScheduleTaskType::Index),
         }
     }
