@@ -15,10 +15,10 @@ use crate::{
 use data_mind::{
     repository::{self, FlowDirection, StockAdjustmentType},
     schema,
-    utils::config_backoff,
+    utils::{config_backoff, with_base_url},
 };
 
-use super::{TRADE_TIME_CRON, in_trade_time, with_base_url};
+use super::{TRADE_TIME_CRON, in_trade_time};
 
 /// 模块顶级方法，用于暴露给父模块调用将相关调度任务加入到全局调度器之中
 pub(super) async fn start_a_stock_tasks(ext_res: ExternalResource) {
@@ -423,6 +423,7 @@ mod test {
     use backoff::{Error, ExponentialBackoff, retry};
     use chrono::{Duration, Local, Utc};
     use data_mind::repository::StockAdjustmentType;
+    use data_mind::utils::with_base_url;
     use futures::{StreamExt, stream};
     use serde_json::Value;
     use strum::IntoEnumIterator;
@@ -430,7 +431,7 @@ mod test {
     use crate::{
         init::ExternalResource,
         scheduler::CST,
-        tasks::{TEST_CH_CLIENT, TEST_HTTP_CLIENT, a_stock::StockZhAHistMonitor, with_base_url},
+        tasks::{TEST_CH_CLIENT, TEST_HTTP_CLIENT, a_stock::StockZhAHistMonitor},
     };
 
     use super::*;

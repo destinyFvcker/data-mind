@@ -42,11 +42,15 @@ async fn main() -> anyhow::Result<()> {
 
     // openapi 挂载点 -----
     #[derive(OpenApi)]
-    // #[openapi(
-    //     tags(
-    //         (name = auth::API_TAG, description = auth::API_DESC)
-    //     )
-    // )]
+    #[openapi(
+        tags(
+            (name = handler::tech_indi::API_TAG, description = handler::tech_indi::API_DESC)
+        ),
+        servers(
+            (url = "http://localhost:9090", description = "本地测试环境"),
+            (url = "https://www.destinyfvcker.cn/coze-plugin/", description = "线上部署环境")
+        )
+    )]
     struct ApiDoc;
 
     ftlog::info!("Data Mind coze plugin stated!");
@@ -58,6 +62,7 @@ async fn main() -> anyhow::Result<()> {
             .app_data(Data::new(ch_client.clone()))
             .app_data(Data::new(reqwest_client.clone()))
             .app_data(Data::from(shared_config.clone()))
+            .service(utoipa_actix_web::scope("/api").configure(handler::config()))
             .openapi_service(|api| Scalar::with_url("/scalar-doc", api))
             .into_app()
     })

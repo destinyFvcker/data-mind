@@ -1,6 +1,9 @@
 //! AKShare 股票数据
 use serde::{Deserialize, Deserializer, Serialize};
 use serde_json::Value;
+use utoipa::ToSchema;
+
+use crate::utils::with_base_url;
 
 /// Real-time market data 数据来源为东方财经
 #[derive(Debug, Deserialize, Serialize)]
@@ -220,34 +223,47 @@ pub struct StockZtPoolEm {
 }
 
 /// 接口: stock_news_em  
-/// 目标地址: https://so.eastmoney.com/news/s  
+/// 实际数据源地址: https://so.eastmoney.com/news/s  
 /// 描述: 东方财富指定个股的新闻资讯数据  
-/// 限量: 指定 symbol 当日最近 100 条新闻资讯数据
-#[derive(Debug, Deserialize, Serialize)]
+/// 限量: 指定 symbol(股票id) 当日最近 100 条新闻资讯数据
+#[derive(Debug, Deserialize, Serialize, ToSchema)]
 pub struct StockNewsEm {
     /// 关键词，例如股票代码（如 "300059"）
     #[serde(rename(deserialize = "关键词"))]
     pub keyword: String,
-
     /// 新闻发布时间（格式：YYYY-MM-DD HH:MM:SS）
     #[serde(rename(deserialize = "发布时间"))]
     pub publish_time: String,
-
     /// 文章来源，例如“人民财讯”
     #[serde(rename(deserialize = "文章来源"))]
     pub source: String,
-
     /// 新闻正文内容
     #[serde(rename(deserialize = "新闻内容"))]
     pub content: String,
-
     /// 新闻标题
     #[serde(rename(deserialize = "新闻标题"))]
     pub title: String,
-
     /// 新闻链接 URL
     #[serde(rename(deserialize = "新闻链接"))]
     pub url: String,
+}
+
+impl StockNewsEm {
+    /// 从astock数据接口获取相关数据
+    pub async fn from_astock_api(
+        reqwest_client: &reqwest::Client,
+        symbol: &str,
+    ) -> anyhow::Result<Vec<Self>> {
+        let res: Vec<Self> = reqwest_client
+            .get(with_base_url("/stock_news_em"))
+            .query(&[("symbol", symbol)])
+            .send()
+            .await?
+            .error_for_status()?
+            .json()
+            .await?;
+        Ok(res)
+    }
 }
 
 /// json schema -> 财经内容精选  
@@ -272,7 +288,7 @@ pub struct StockNewsMainCx {
 /// 目标地址: https://basic.10jqka.com.cn/new/000063/finance.html  
 /// 描述: 同花顺-财务指标-主要指标  
 /// 限量: 单次获取指定 symbol 的所有数据  
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize, ToSchema)]
 pub struct StockFinancialAbstractThs {
     /// 报告期
     #[serde(deserialize_with = "always_string", rename(deserialize = "报告期"))]
@@ -420,12 +436,33 @@ pub struct StockFinancialAbstractThs {
     pub debt_asset_ratio: Option<String>,
 }
 
+impl StockFinancialAbstractThs {
+    /// 从aktool之中获取数据：  
+    /// - symbol="000063"; 股票代码
+    /// - indicator example = "按报告期"; choice of {"按报告期", "按年度", "按单季度"}
+    pub async fn from_astock_api(
+        reqwest_client: &reqwest::Client,
+        symbol: &str,
+        indicator: &str,
+    ) -> anyhow::Result<Vec<Self>> {
+        let res: Vec<Self> = reqwest_client
+            .get(with_base_url("/stock_financial_abstract_ths"))
+            .query(&[("symbol", symbol), ("indicator", indicator)])
+            .send()
+            .await?
+            .error_for_status()?
+            .json()
+            .await?;
+        Ok(res)
+    }
+}
+
 /// akshare json schema 技术指标-创新高  
 /// 接口：stock_rank_cxg_ths
 /// 目标地址：https://data.10jqka.com.cn/rank/cxg/  
 /// 描述：同花顺-数据中心-技术选股-创新高  
 /// 限量：单次指定 symbol 的所有数据
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Deserialize, Serialize, ToSchema)]
 pub struct StockRankCxgThs {
     /// 前期高点
     #[serde(rename(deserialize = "前期高点"))]
@@ -436,13 +473,13 @@ pub struct StockRankCxgThs {
     /// 序号
     #[serde(rename(deserialize = "序号"))]
     pub index: u32,
-    /// 换手率
+    /// 换手率，注意单位%
     #[serde(rename(deserialize = "换手率"))]
     pub turnover_rate: f64,
-    /// 最新价
+    /// 最新价，注意单位：元
     #[serde(rename(deserialize = "最新价"))]
     pub latest_price: f64,
-    /// 涨跌幅
+    /// 涨跌幅，注意单位%
     #[serde(rename(deserialize = "涨跌幅"))]
     pub change_percentage: f64,
     /// 股票代码
@@ -453,12 +490,31 @@ pub struct StockRankCxgThs {
     pub stock_name: String,
 }
 
+impl StockRankCxgThs {
+    /// 从akshare之中获取数据  
+    /// symbol example = "创月新高"; choice of {"创月新高", "半年新高", "一年新高", "历史新高"}
+    pub async fn from_astock_api(
+        reqwest_client: &reqwest::Client,
+        symbol: &str,
+    ) -> anyhow::Result<Vec<Self>> {
+        let res: Vec<Self> = reqwest_client
+            .get(with_base_url("/stock_rank_cxg_ths"))
+            .query(&[("symbol", symbol)])
+            .send()
+            .await?
+            .error_for_status()?
+            .json()
+            .await?;
+        Ok(res)
+    }
+}
+
 /// akshare json schema 技术指标-创新低  
 /// 接口：stock_rank_cxd_ths  
 /// 目标地址：https://data.10jqka.com.cn/rank/cxd/  
 /// 描述：同花顺-数据中心-技术选股-创新低  
 /// 限量：单次指定 symbol 的所有数据
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Deserialize, Serialize, ToSchema)]
 pub struct StockRankCxdThs {
     /// 前期低点价格
     #[serde(rename(deserialize = "前期低点"))]
@@ -472,7 +528,7 @@ pub struct StockRankCxdThs {
     /// 换手率，单位：百分比 (%)
     #[serde(rename(deserialize = "换手率"))]
     pub turnover_rate: f64,
-    /// 最新价格
+    /// 最新价格，注意单位：(元)
     #[serde(rename(deserialize = "最新价"))]
     pub latest_price: f64,
     /// 涨跌幅，单位：百分比 (%)
@@ -486,12 +542,31 @@ pub struct StockRankCxdThs {
     pub stock_name: String,
 }
 
+impl StockRankCxdThs {
+    /// 从akshare获取数据  
+    /// symbol example="创月新低"; choice of {"创月新低", "半年新低", "一年新低", "历史新低"}
+    pub async fn from_astock_api(
+        reqwest_client: &reqwest::Client,
+        symbol: &str,
+    ) -> anyhow::Result<Vec<Self>> {
+        let res: Vec<Self> = reqwest_client
+            .get(with_base_url("/stock_rank_cxd_ths"))
+            .query(&[("symbol", symbol)])
+            .send()
+            .await?
+            .error_for_status()?
+            .json()
+            .await?;
+        Ok(res)
+    }
+}
+
 /// akshare json schema 技术指标-连续上涨  
 /// 接口：stock_rank_lxsz_ths  
 /// 目标地址：https://data.10jqka.com.cn/rank/lxsz/  
 /// 描述：同花顺-数据中心-技术选股-连续上涨  
 /// 限量：单次返回所有数据
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Deserialize, Serialize, ToSchema)]
 pub struct StockRankLxszThs {
     /// 序号
     #[serde(rename(deserialize = "序号"))]
@@ -525,12 +600,26 @@ pub struct StockRankLxszThs {
     pub consecutive_change_percentage: f64,
 }
 
+impl StockRankLxszThs {
+    /// 从akshare获取对应的一组数据
+    pub async fn from_astock_api(reqwest_client: &reqwest::Client) -> anyhow::Result<Vec<Self>> {
+        let res: Vec<Self> = reqwest_client
+            .get(with_base_url("/stock_rank_lxsz_ths"))
+            .send()
+            .await?
+            .error_for_status()?
+            .json()
+            .await?;
+        Ok(res)
+    }
+}
+
 /// akshare json schema 技术指标-连续下跌  
 /// 接口：stock_rank_lxxd_ths  
 /// 目标地址：https://data.10jqka.com.cn/rank/lxxd/  
 /// 描述：同花顺-数据中心-技术选股-连续下跌  
 /// 限量：单次返回所有数据
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Deserialize, Serialize, ToSchema)]
 pub struct StockRankLxxdThs {
     /// 序号
     #[serde(rename(deserialize = "序号"))]
@@ -564,12 +653,26 @@ pub struct StockRankLxxdThs {
     pub consecutive_change_percentage: f64,
 }
 
+impl StockRankLxxdThs {
+    /// 从akshare获取对应的一组数据
+    pub async fn from_astock_api(reqwest_client: &reqwest::Client) -> anyhow::Result<Vec<Self>> {
+        let res: Vec<Self> = reqwest_client
+            .get(with_base_url("/stock_rank_lxxd_ths"))
+            .send()
+            .await?
+            .error_for_status()?
+            .json()
+            .await?;
+        Ok(res)
+    }
+}
+
 /// akshare json schema 技术指标-持续放量  
 /// 接口: stock_rank_cxfl_ths  
 /// 目标地址: https://data.10jqka.com.cn/rank/cxfl/  
 /// 描述: 同花顺-数据中心-技术选股-持续放量  
 /// 限量: 单次返回所有数据
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Deserialize, Serialize, ToSchema)]
 pub struct StockRankCxflThs {
     /// 基准日成交量，格式示例："371.17万(04月18日)" (股)
     #[serde(rename(deserialize = "基准日成交量"))]
@@ -603,12 +706,26 @@ pub struct StockRankCxflThs {
     pub stage_change_percentage: f64,
 }
 
+impl StockRankCxflThs {
+    /// 从akshare获取到对应的数据
+    pub async fn from_astock_api(reqwest_client: &reqwest::Client) -> anyhow::Result<Vec<Self>> {
+        let res: Vec<Self> = reqwest_client
+            .get(with_base_url("/stock_rank_cxfl_ths"))
+            .send()
+            .await?
+            .error_for_status()?
+            .json()
+            .await?;
+        Ok(res)
+    }
+}
+
 /// akshare json schema 技术指标-持续缩量  
 /// 接口: stock_rank_cxsl_ths
 /// 目标地址: https://data.10jqka.com.cn/rank/cxsl/
 /// 描述: 同花顺-数据中心-技术选股-持续缩量
 /// 限量: 单次返回所有数据
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Deserialize, Serialize, ToSchema)]
 pub struct StockRankCxslThs {
     /// 基准日成交量，格式示例："371.17万(04月18日)" (股)
     #[serde(rename(deserialize = "基准日成交量"))]
@@ -640,6 +757,19 @@ pub struct StockRankCxslThs {
     /// 阶段涨跌幅，单位：百分比 (%)
     #[serde(rename(deserialize = "阶段涨跌幅"))]
     pub stage_change_percentage: f64,
+}
+
+impl StockRankCxslThs {
+    pub async fn from_astock_api(reqwest_client: &reqwest::Client) -> anyhow::Result<Vec<Self>> {
+        let res: Vec<Self> = reqwest_client
+            .get(with_base_url("/stock_rank_cxsl_ths"))
+            .send()
+            .await?
+            .error_for_status()?
+            .json()
+            .await?;
+        Ok(res)
+    }
 }
 
 // 通用的转换函数：false/null → None，其他有效值 → Some(对应类型)
