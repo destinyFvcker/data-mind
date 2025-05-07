@@ -17,9 +17,9 @@ port = 3306
 # password = ? (in env)
 database = "data_mind"
 
-[github]
+[git]
 client_id = "Ov23lim6oTncg9iWxk1T"
-# secret = ? (in env)
+secret = "dsawd"
 
 [kafka]
 broker = "localhost:9092"
