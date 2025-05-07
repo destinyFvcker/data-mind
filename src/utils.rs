@@ -13,6 +13,13 @@ use rskafka::{
 };
 use sqlx::{Executor, MySqlPool};
 
+pub const AK_TOOLS_BASE_URL: &'static str = "http://127.0.0.1:8080/api/public";
+
+/// 通过指定的数据字典项拼接出实际的aktools目标数据url
+pub fn with_base_url(path: &str) -> String {
+    format!("{}{}", AK_TOOLS_BASE_URL, path)
+}
+
 /// 获取一个比较合理的指数退避重拾策略
 #[inline]
 pub fn config_backoff(max_interval: u64, max_elapsed_time: u64) -> ExponentialBackoff {

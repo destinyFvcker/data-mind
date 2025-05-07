@@ -1,10 +1,11 @@
 use chrono::Utc;
-use data_mind::{repository, schema, utils::config_backoff};
+use data_mind::{
+    repository, schema,
+    utils::{config_backoff, with_base_url},
+};
 use futures::{StreamExt, TryStreamExt, stream};
 
 use crate::{init::ExternalResource, scheduler::SCHEDULE_TASK_MANAGER};
-
-use super::with_base_url;
 
 pub async fn start_a_index_tasks(ext_res: ExternalResource) {
     let stock_zh_index_daily_monitor = StockZhIndexDailyMonitor {

@@ -18,8 +18,6 @@ mod clean_up;
 mod s_impls;
 mod utils;
 
-const AK_TOOLS_BASE_URL: &'static str = "http://127.0.0.1:8080/api/public";
-
 #[cfg(test)]
 pub static TEST_CH_CLIENT: LazyLock<clickhouse::Client> = LazyLock::new(|| {
     clickhouse::Client::default()
@@ -37,10 +35,6 @@ pub static TEST_HTTP_CLIENT: LazyLock<reqwest::Client> = LazyLock::new(|| {
         .build()
         .unwrap()
 });
-
-fn with_base_url(path: &str) -> String {
-    format!("{}{}", AK_TOOLS_BASE_URL, path)
-}
 
 /// 一个接近于交易时间的cron表达式
 const TRADE_TIME_CRON: &'static str = "*/30 * 9-11,13-14 * * MON-FRI";
