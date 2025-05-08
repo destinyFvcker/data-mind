@@ -458,7 +458,6 @@ mod test {
     use backoff::{Error, ExponentialBackoff, retry};
     use chrono::{Duration, Local, Utc};
     use data_mind::repository::StockAdjustmentType;
-    use data_mind::utils::with_base_url;
     use futures::{StreamExt, stream};
     use serde_json::Value;
     use strum::IntoEnumIterator;
@@ -466,7 +465,7 @@ mod test {
     use crate::{
         init::ExternalResource,
         scheduler::CST,
-        tasks::{TEST_CH_CLIENT, TEST_HTTP_CLIENT, a_stock::StockZhAHistMonitor},
+        tasks::{TEST_CH_CLIENT, TEST_HTTP_CLIENT},
     };
 
     use super::*;

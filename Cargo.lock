@@ -968,6 +968,7 @@ dependencies = [
  "serde_repr",
  "sqlx",
  "strum",
+ "tokio",
  "utoipa",
  "uuid",
 ]

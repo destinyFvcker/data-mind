@@ -435,8 +435,30 @@ impl StockZtPoolEm {
     }
 }
 
+// --------------------------------------------------------------------------
+
 // 重导出，其clickhouse schema和json schema实际上是完全一样的
 pub use schema::akshare::StockRankLxszThs;
+
+impl schema::akshare::StockRankLxszThs {
+    pub async fn fetch_with_min_rising_days(
+        ch_client: &clickhouse::Client,
+        min_rising_days: i32,
+    ) -> anyhow::Result<Vec<Self>> {
+        let data = ch_client
+            .query(
+                r#"
+        SELECT *
+        FROM stock_rank_lxsz_ths
+        WHERE consecutive_rising_days > ?"#,
+            )
+            .bind(min_rising_days)
+            .fetch_all()
+            .await?;
+
+        Ok(data)
+    }
+}
 
 // --------------------------------------------------------------------------
 
@@ -498,5 +520,20 @@ mod test {
         let pub_time = DateTime::parse_from_str(pub_time_str, "%Y-%m-%d %H:%M:%S%.3f %z").unwrap();
         let utc_time: DateTime<Utc> = pub_time.with_timezone(&Utc);
         println!("interval_time = {pub_time:?}, utc time = {utc_time:?}");
+    }
+}
+
+#[cfg(test)]
+mod test_stock_rank_lxsz_ths {
+    use crate::utils::TEST_CH_CLIENT;
+
+    use super::*;
+
+    #[tokio::test]
+    async fn fetch_with_min_rising_days() {
+        let data = StockRankLxszThs::fetch_with_min_rising_days(&TEST_CH_CLIENT, 9)
+            .await
+            .unwrap();
+        println!("data = {:#?}", data);
     }
 }

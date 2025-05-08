@@ -80,4 +80,5 @@ backoff.workspace = true
 uuid.workspace = true
 rskafka.workspace = true
 serde_bytes.workspace = true
+tokio.workspace = true
 dm_proto = { path = "./dm-proto" }
