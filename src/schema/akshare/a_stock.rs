@@ -1,4 +1,5 @@
 //! AKShare 股票数据
+use clickhouse::Row;
 use serde::{Deserialize, Deserializer, Serialize};
 use serde_json::Value;
 use utoipa::ToSchema;
@@ -566,7 +567,7 @@ impl StockRankCxdThs {
 /// 目标地址：https://data.10jqka.com.cn/rank/lxsz/  
 /// 描述：同花顺-数据中心-技术选股-连续上涨  
 /// 限量：单次返回所有数据
-#[derive(Debug, Deserialize, Serialize, ToSchema)]
+#[derive(Debug, Deserialize, Serialize, ToSchema, Row)]
 pub struct StockRankLxszThs {
     /// 序号
     #[serde(rename(deserialize = "序号"))]
