@@ -49,7 +49,7 @@ async fn main() -> anyhow::Result<()> {
         ),
         servers(
             (url = "http://localhost:9090", description = "本地测试环境"),
-            (url = "https://destinyfvcker.cn/coze-plugin/", description = "线上部署环境")
+            (url = "https://destinyfvcker.cn/coze-plugin", description = "线上部署环境")
         )
     )]
     struct ApiDoc;
