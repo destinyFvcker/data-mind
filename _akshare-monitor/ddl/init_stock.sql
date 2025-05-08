@@ -135,3 +135,25 @@ CREATE TABLE IF NOT EXISTS stock_news_main_cx
 )
 ENGINE = ReplacingMergeTree(ts)
 ORDER BY (pub_time, summary, tag, url);
+
+-- 技术指标-连续上涨  
+-- 接口：stock_rank_lxsz_ths  
+-- 目标地址：https://data.10jqka.com.cn/rank/lxsz/  
+-- 描述：同花顺-数据中心-技术选股-连续上涨  
+-- 限量：单次返回所有数据
+-- 加入clickhouse记录原因：单次拉取数据量过大，响应缓慢
+CREATE TABLE IF NOT EXISTS stock_rank_lxsz_ths
+(
+    `index` Int32 COMMENT '序号',
+    `industry` String COMMENT '所属行业',
+    `closing_price` Float64 COMMENT '收盘价(元)',
+    `lowest_price` Float64 COMMENT '最低价(元)',
+    `highest_price` Float64 COMMENT '最高价(元)',
+    `cumulative_turnover_rate` Float64 COMMENT '累计换手率，单位：百分比 (%)',
+    `stock_code` LowCardinality(String) COMMENT '股票代码',
+    `stock_name` LowCardinality(String) COMMENT '股票简称',
+    `consecutive_rising_days` Int32 COMMENT '连续上涨天数',
+    `consecutive_change_percentage` Float64 COMMENT '连续涨跌幅，单位：百分比 (%)',
+)
+ENGINE = MergeTree
+ORDER BY (stock_code)

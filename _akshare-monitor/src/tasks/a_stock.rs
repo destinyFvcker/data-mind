@@ -416,6 +416,28 @@ impl StockNewsMainCxMonitor {
     }
 }
 
+// ------------------------------------------------------------------------------------
+
+pub struct StockRankLxszThsMonitor {
+    data_table: String,
+    ext_res: ExternalResource,
+}
+
+impl StockRankLxszThsMonitor {
+    pub async fn collect_data(&self) -> anyhow::Result<()> {
+        let rows =
+            schema::akshare::StockRankLxszThs::from_astock_api(&self.ext_res.http_client).await?;
+
+        let mut inserter = self.ext_res.ch_client.inserter(&self.data_table)?;
+        for row in rows {
+            inserter.write(&row)?;
+        }
+        inserter.end().await?;
+
+        Ok(())
+    }
+}
+
 #[cfg(test)]
 mod test {
     use std::{io::Read, os::fd, str::FromStr};

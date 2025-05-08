@@ -435,6 +435,9 @@ impl StockZtPoolEm {
     }
 }
 
+// 重导出，其clickhouse schema和json schema实际上是完全一样的
+pub use schema::akshare::StockRankLxszThs;
+
 // --------------------------------------------------------------------------
 
 /// clickhouse schema -> 财经内容精选  
