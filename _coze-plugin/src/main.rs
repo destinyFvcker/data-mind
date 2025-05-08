@@ -8,6 +8,7 @@ use time::Duration;
 use utoipa::OpenApi;
 use utoipa_actix_web::AppExt;
 use utoipa_scalar::{Scalar, Servable};
+use utoipa_swagger_ui::SwaggerUi;
 
 mod handler;
 mod init;
@@ -64,6 +65,9 @@ async fn main() -> anyhow::Result<()> {
             .app_data(Data::from(shared_config.clone()))
             .service(utoipa_actix_web::scope("/api").configure(handler::config()))
             .openapi_service(|api| Scalar::with_url("/scalar-doc", api))
+            .openapi_service(|api| {
+                SwaggerUi::new("/swagger-ui/{_:.*}").url("/api-docs/openapi.json", api)
+            })
             .into_app()
     })
     .bind((Ipv4Addr::UNSPECIFIED, init_config.server.port))
