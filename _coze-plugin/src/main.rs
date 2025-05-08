@@ -66,7 +66,7 @@ async fn main() -> anyhow::Result<()> {
             .service(utoipa_actix_web::scope("/api").configure(handler::config()))
             .openapi_service(|api| Scalar::with_url("/scalar-doc", api))
             .openapi_service(|api| {
-                SwaggerUi::new("/swagger-ui/{_:.*}").url("/api-docs/openapi.json", api)
+                SwaggerUi::new("/swagger-ui/{_:.*}").url("/coze-plugin/api-docs/openapi.json", api)
             })
             .into_app()
     })
