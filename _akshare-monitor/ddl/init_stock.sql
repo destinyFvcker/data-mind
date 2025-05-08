@@ -56,19 +56,33 @@ SETTINGS index_granularity = 8192;
 -- 东方财富-沪深京 A 股日频率数据; 历史数据按日频率更新, 当日收盘价在收盘后获取
 CREATE TABLE IF NOT EXISTS stock_zh_a_hist
 (
+    -- 复权方式枚举，choice of ['不复权', '复权前', '复权后']
     `adj_type` Enum8('None' = 0, 'Forward' = 1, 'Backward' = 2),
+    -- 股票代码
     `code` LowCardinality(String),
+    -- 开盘价
     `open` Float64,
+    -- 收盘价
     `close` Float64,
+    -- 最低价
     `low` Float64,
+    -- 最高价
     `high` Float64,
+    -- 成交量,注意单位(手)
     `trading_volume` Float64,
+    -- 成交额,注意单位(元)
     `trading_value` Float64,
+    -- 振幅(%)
     `amplitude` Float64,
+    -- 换手率(%)
     `turnover_rate` Float64,
+    -- 涨跌幅(%)
     `change_percentage` Float64,
+    -- 涨跌额,注意单位(元)
     `change_amount` Float64,
+    -- 数据产生日期
     `date` Date,
+    -- 数据收集时间戳，毫秒等级
     `ts` DateTime64(3, 'Asia/Shanghai')
 )
 ENGINE = ReplacingMergeTree

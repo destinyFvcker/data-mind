@@ -206,7 +206,7 @@ impl StockAdjustmentType {
 /// clickhouse数据模型
 #[derive(Debug, Deserialize, Serialize, Row)]
 pub struct StockZhAHist {
-    /// 复权方式枚举
+    /// 复权方式枚举，choice of ['不复权', '复权前', '复权后']
     pub adj_type: StockAdjustmentType,
     /// 股票代码
     pub code: String,
@@ -218,17 +218,17 @@ pub struct StockZhAHist {
     pub low: f64,
     /// 最高价
     pub high: f64,
-    /// 成交量
+    /// 成交量,注意单位(手)
     pub trading_volume: f64,
-    /// 成交额
+    /// 成交额,注意单位(元)
     pub trading_value: f64,
-    /// 振幅
+    /// 振幅(%)
     pub amplitude: f64,
-    /// 换手率
+    /// 换手率(%)
     pub turnover_rate: f64,
-    /// 涨跌幅
+    /// 涨跌幅(%)
     pub change_percentage: f64,
-    /// 涨跌额
+    /// 涨跌额,注意单位(元)
     pub change_amount: f64,
     /// 数据产生日期
     #[serde(with = "clickhouse::serde::chrono::date")]

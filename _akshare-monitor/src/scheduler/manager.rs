@@ -20,6 +20,7 @@ enum TaskCommand {
     Add(ScheduleTask),
     Update(ScheduleTask), // new task with the same key
     Remove(String),       // remove with the key of task
+    Trigger(String),
 }
 
 /// 调度任务描述性元信息
@@ -104,6 +105,9 @@ impl TaskManager {
                     TaskCommand::Remove(key) => {
                         Self::_cancel_task(Arc::clone(&tasks_map), key).await
                     }
+                    TaskCommand::Trigger(task_id) => {
+                        Self::_trigger_task(Arc::clone(&tasks_map), &task_id).await
+                    }
                 }
             }
         });
@@ -131,6 +135,29 @@ impl TaskManager {
         }
         let new_handle = Self::spawn_task_handler(&new_task);
         tasks_guard.insert(new_task.key.clone(), (new_task, new_handle));
+    }
+
+    /// 直接触发任务管理其之中一个uuid对应的任务的`execute`方法
+    async fn _trigger_task(tasks_map: Arc<Mutex<TasksScheduleMap>>, task_id: &str) {
+        let schedulable_handle = {
+            let task_guard = tasks_map.lock().unwrap();
+            let schedule_task = task_guard.get(task_id);
+            schedule_task.map(|task| (task.0.schedulable.clone(), task.0.task_meta.clone()))
+        };
+
+        let Some((schedulable, task_meta)) = schedulable_handle else {
+            ftlog::warn!("[trigger_task] input task_id not found");
+            return;
+        };
+
+        ftlog::info!("[trigger_task] task_meta = {task_meta:?} triggered");
+        tokio::spawn(async move {
+            Box::into_pin(schedulable.execute())
+                .await
+                .inspect_err(|err| {
+                    ftlog::error!("[trigger_task] task_meta = {task_meta:?}, error = {err}")
+                })
+        });
     }
 
     // 取消任务管理器之中的一个任务
@@ -235,7 +262,16 @@ impl TaskManager {
             .inspect_err(|err| {
                 ftlog::error!(
                     "[in TaskManager::update_task] error occurred when add task to task manager: {}",
-                    err.to_string()
+                    err
+                )
+            });
+    }
+
+    pub async fn trigger_task(&self, task_id: String) {
+        let _ = self.command_tx.send(TaskCommand::Trigger(task_id)).await.inspect_err(|err| {
+                ftlog::error!(
+                    "[in TaskManager::trigger_task] error occurred when trigger task in task manager: {}",
+                    err
                 )
             });
     }
@@ -244,7 +280,7 @@ impl TaskManager {
         let _ = self.command_tx.send(TaskCommand::Remove(key)).await.inspect_err(|err| {
                 ftlog::error!(
                     "[in TaskManager::cancel_task] error occurred when cancel task to task manager: {}",
-                    err.to_string()
+                    err
                 )
             });
     }

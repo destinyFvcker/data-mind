@@ -97,22 +97,22 @@ pub struct StockZhAHist {
     /// 最高价
     #[serde(rename(deserialize = "最高"))]
     pub high: f64,
-    /// 成交量
+    /// 成交量，注意单位(手)
     #[serde(rename(deserialize = "成交量"))]
     pub trading_volume: f64,
-    /// 成交额
+    /// 成交额，注意单位(元)
     #[serde(rename(deserialize = "成交额"))]
     pub trading_value: f64,
-    /// 振幅
+    /// 振幅(%)
     #[serde(rename(deserialize = "振幅"))]
     pub amplitude: f64,
-    /// 换手率
+    /// 换手率(%)
     #[serde(rename(deserialize = "换手率"))]
     pub turnover_rate: f64,
-    /// 涨跌幅
+    /// 涨跌幅(%)
     #[serde(rename(deserialize = "涨跌幅"))]
     pub change_percentage: f64,
-    /// 涨跌额
+    /// 涨跌额，注意单位(元)
     #[serde(rename(deserialize = "涨跌额"))]
     pub change_amount: f64,
     /// 日期
@@ -773,6 +773,75 @@ impl StockRankCxslThs {
     }
 }
 
+/// stock_individual_info_em  
+/// 目标地址: http://quote.eastmoney.com/concept/sh603777.html?from=classic  
+/// 描述: 东方财富-个股-股票信息  
+/// 限量: 单次返回指定 symbol 的个股信息
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
+pub struct StockIndividualInfoEm {
+    /// 最新价(元)
+    #[serde(rename(deserialize = "最新"))]
+    pub latest_price: f64,
+    /// 股票代码
+    #[serde(rename(deserialize = "股票代码"))]
+    pub stock_code: String,
+    /// 股票简称
+    #[serde(rename(deserialize = "股票简称"))]
+    pub stock_name: String,
+    /// 总股本(元)
+    #[serde(rename(deserialize = "总股本"))]
+    pub total_shares: f64,
+    /// 流通股
+    #[serde(rename(deserialize = "流通股"))]
+    pub circulating_shares: f64,
+    /// 总市值(元)
+    #[serde(rename(deserialize = "总市值"))]
+    pub total_market_cap: f64,
+    /// 流通市值(元)
+    #[serde(rename(deserialize = "流通市值"))]
+    pub circulating_market_cap: f64,
+    /// 行业
+    #[serde(rename(deserialize = "行业"))]
+    pub industry: String,
+    /// 上市时间
+    #[serde(rename(deserialize = "上市时间"))]
+    pub listing_date: i64,
+}
+
+impl StockIndividualInfoEm {
+    pub async fn from_astock_api(
+        reqwest_client: &reqwest::Client,
+        stock_code: &str,
+    ) -> anyhow::Result<Self> {
+        #[derive(Debug, Deserialize)]
+        struct ItemValue {
+            item: String,
+            value: Value,
+        }
+
+        let raw_json = reqwest_client
+            .get(with_base_url("/stock_individual_info_em"))
+            .query(&[("symbol", stock_code)])
+            .send()
+            .await?
+            .error_for_status()?
+            .text()
+            .await?;
+
+        // 1️⃣ 反序列化为 Vec<ItemValue>
+        let list: Vec<ItemValue> = serde_json::from_str(&raw_json)?;
+
+        // 2️⃣ 转换为 Map<String, Value>
+        let mut map = serde_json::Map::new();
+        for entry in list {
+            map.insert(entry.item, entry.value);
+        }
+
+        let stock_info: Self = serde_json::from_value(Value::Object(map))?;
+        Ok(stock_info)
+    }
+}
+
 // 通用的转换函数：false/null → None，其他有效值 → Some(对应类型)
 fn false_or_null_as_none<'de, D, T>(deserializer: D) -> Result<Option<T>, D::Error>
 where
@@ -814,6 +883,8 @@ where
 
 #[cfg(test)]
 mod test {
+    use crate::utils::TEST_HTTP_CLIENT;
+
     use super::*;
 
     #[test]
@@ -869,5 +940,13 @@ mod test {
             },
             result2.unwrap()
         );
+    }
+
+    #[tokio::test]
+    async fn test_stock_individual_info_em() {
+        let data = StockIndividualInfoEm::from_astock_api(&TEST_HTTP_CLIENT, "603777")
+            .await
+            .unwrap();
+        println!("{:#?}", data);
     }
 }
