@@ -145,7 +145,7 @@ impl Schedulable for StockNewsMainCxMonitor {
         TaskMeta {
             name: "stock_news_main_cx".to_owned(),
             desc: "财新网-财新数据通-内容精选".to_owned(),
-            cron_expr: "0 30 9 * * *".to_owned(),
+            cron_expr: "0 52 21 * * *".to_owned(),
             tag: Some(ScheduleTaskType::AStock),
         }
     }
