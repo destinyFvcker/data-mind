@@ -3,7 +3,7 @@ use actix_web::{
     web::{self, Data, Json},
 };
 use serde::Deserialize;
-use utoipa::{IntoParams, ToSchema};
+use utoipa::IntoParams;
 use utoipa_actix_web::{scope, service_config::ServiceConfig};
 
 use crate::schema::service::news::{StockNewsEm, StockNewsMainCx};
@@ -21,19 +21,19 @@ pub fn mount_news_scope(config: &mut ServiceConfig) {
 }
 
 /// 请求财经内容精选数据时使用的请求结构信息
-#[derive(Debug, Deserialize, ToSchema, IntoParams)]
+#[derive(Debug, Deserialize, IntoParams)]
 struct NewsRangeQuery {
     /// 时间区间的开始，格式为YYYY-MM-DD HH:mm:ss
-    #[schema(example = "2025-05-01 00:00:00")]
+    #[param(example = "2025-05-01 00:00:00")]
     start_time: String,
     /// 时间区间的结束，格式为YYYY-MM-DD HH:mm:ss
-    #[schema(example = "2025-05-07 23:59:59")]
+    #[param(example = "2025-05-07 23:59:59")]
     end_time: String,
     /// 用于指定结果集开始返回的偏移量，默认是从第 0 条记录开始。
-    #[schema(example = 0)]
+    #[param(example = 0)]
     offset: u32,
     /// 限制返回结果的最大条数
-    #[schema(example = 10)]
+    #[param(example = 10)]
     limit: u32,
 }
 

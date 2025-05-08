@@ -1,7 +1,7 @@
 use std::{net::Ipv4Addr, sync::Arc};
 
 use actix_web::{App, HttpServer, web::Data};
-use data_mind::handler::{news, tech_indi};
+use data_mind::handler::{a_stock, indicator, news};
 use ftlog::appender::{FileAppender, Period};
 use init::{init_ch_client, init_reqwest_client};
 use init_config::InitConfig;
@@ -46,8 +46,9 @@ async fn main() -> anyhow::Result<()> {
     #[derive(OpenApi)]
     #[openapi(
         tags(
-            (name = tech_indi::API_TAG, description = tech_indi::API_DESC),
-            (name = news::API_TAG, description = news::API_DESC)
+            (name = indicator::API_TAG, description = indicator::API_DESC),
+            (name = news::API_TAG, description = news::API_DESC),
+            (name = a_stock::API_TAG, description = a_stock::API_DESC)
         ),
         servers(
             (url = "http://localhost:9090", description = "本地测试环境"),

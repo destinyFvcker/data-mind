@@ -1,3 +1,4 @@
+#![allow(unused)]
 use chrono::Utc;
 use clickhouse::Row;
 use serde::{Deserialize, Serialize};

@@ -214,3 +214,22 @@ async fn test_stock_news_em() {
     file.write_all(serde_json::to_string_pretty(&res).unwrap().as_bytes())
         .unwrap();
 }
+
+#[actix_web::test]
+async fn test_stock_individual_info_em() {
+    let res: Vec<Value> = TEST_HTTP_CLIENT
+        .get(with_base_url("/stock_individual_info_em"))
+        .query(&[("symbol", "603777")])
+        .send()
+        .await
+        .unwrap()
+        .json()
+        .await
+        .unwrap();
+
+    println!("res len = {}", res.len());
+
+    let mut file = File::create("../tmp/个股信息查询.json").unwrap();
+    file.write_all(serde_json::to_string_pretty(&res).unwrap().as_bytes())
+        .unwrap();
+}
