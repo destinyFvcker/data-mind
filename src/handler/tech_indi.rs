@@ -1,19 +1,19 @@
 //! a股相关技术指标的api handler
 
+use crate::schema::akshare::{
+    StockFinancialAbstractThs, StockRankCxdThs, StockRankCxflThs, StockRankCxgThs,
+    StockRankCxslThs, StockRankLxszThs, StockRankLxxdThs,
+};
 use actix_web::{
     get,
     web::{self, Data, Json},
-};
-use data_mind::schema::akshare::{
-    StockFinancialAbstractThs, StockRankCxdThs, StockRankCxflThs, StockRankCxgThs,
-    StockRankCxslThs, StockRankLxszThs, StockRankLxxdThs,
 };
 use utoipa_actix_web::{scope, service_config::ServiceConfig};
 
 pub const API_TAG: &'static str = "技术指标";
 pub const API_DESC: &'static str = "相关从同花顺之中获取的股票市场技术指标，具有较强的市场概括性";
 
-pub fn mount_tech_indicator_scopr(config: &mut ServiceConfig) {
+pub fn mount_tech_indicator_scope(config: &mut ServiceConfig) {
     config.service(
         scope("/tech_indicator")
             .service(stock_financial_abstract_ths)

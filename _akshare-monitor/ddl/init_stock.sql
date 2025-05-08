@@ -126,11 +126,17 @@ order by (date, code);
 -- 限量: 返回所有历史新闻数据
 CREATE TABLE IF NOT EXISTS stock_news_main_cx
 (
+    -- 新闻被精选、推送或整理到内容库的时间。格式通常是 yyyy-MM-dd HH:mm。
     `interval_time` String,
+    -- 新闻的正式发布时间，即新闻内容原文在财新网等发布的时间。格式是完整的 yyyy-MM-dd HH:mm:ss.sss。
     `pub_time` DateTime64(3, 'Asia/Shanghai'),
+    -- 新闻的摘要内容，对新闻正文的简要概括，便于快速了解新闻主旨。
     `summary` String,
+    -- 新闻的主题标签，通常由几个关键词组成，归纳了该新闻的主要话题或核心内容。
     `tag` String,
+    -- 新闻的详情链接，点击可以跳转到财新网对应的新闻完整正文页面。
     `url` String,
+    -- 数据收集时间，用于排除重复数据(取最新)
     `ts` DateTime64(3, 'Asia/Shanghai')
 )
 ENGINE = ReplacingMergeTree(ts)

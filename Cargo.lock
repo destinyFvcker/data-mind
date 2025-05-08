@@ -954,6 +954,7 @@ dependencies = [
 name = "data_mind"
 version = "0.1.0"
 dependencies = [
+ "actix-web",
  "anyhow",
  "backoff",
  "chrono",
@@ -970,6 +971,7 @@ dependencies = [
  "strum",
  "tokio",
  "utoipa",
+ "utoipa-actix-web",
  "uuid",
 ]
 

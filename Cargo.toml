@@ -42,7 +42,7 @@ actix-web = { version = "4.10.2", features = ["macros"] }
 utoipa-actix-web = "0.1.2"
 utoipa-scalar = { version = "0.3.0", features = ["actix-web"] }
 utoipa-swagger-ui = { version = "9.0.1", features = ["actix-web"] }
-utoipa = { version = "5.3.1", features = ["actix_extras"] }
+utoipa = { version = "5.3.1", features = ["actix_extras", "chrono"] }
 serde_repr = "0.1.20"
 strum = { version = "0.27.1", features = ["derive"] }
 futures = "0.3.31"
@@ -71,6 +71,8 @@ serde_repr.workspace = true
 anyhow.workspace = true
 reqwest.workspace = true
 utoipa.workspace = true
+actix-web.workspace = true
+utoipa-actix-web.workspace = true
 chrono.workspace = true
 clickhouse.workspace = true
 strum.workspace = true
