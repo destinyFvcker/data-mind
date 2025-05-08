@@ -165,7 +165,7 @@ impl Schedulable for StockRankLxszThsMonitor {
         TaskMeta {
             name: "stock_rank_lxsz_ths".to_owned(),
             desc: "同花顺-数据中心-技术选股-连续上涨".to_owned(),
-            cron_expr: "0 30 16 * * *".to_owned(),
+            cron_expr: "0 3 17 * * *".to_owned(),
             tag: Some(ScheduleTaskType::AStock),
         }
     }

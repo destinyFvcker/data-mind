@@ -64,6 +64,15 @@ pub(super) async fn start_a_stock_tasks(ext_res: ExternalResource) {
     SCHEDULE_TASK_MANAGER
         .add_task(stock_news_main_cx_monitor)
         .await;
+
+    // StockRankLxszThsMonitor
+    let stock_rank_lxsz_ths_monitor = StockRankLxszThsMonitor {
+        data_table: "stock_rank_lxsz_ths".to_owned(),
+        ext_res: ext_res.clone(),
+    };
+    SCHEDULE_TASK_MANAGER
+        .add_task(stock_rank_lxsz_ths_monitor)
+        .await;
 }
 
 /// 收集东方财富网-沪深京 A 股-实时行情数据
@@ -428,6 +437,10 @@ impl StockRankLxszThsMonitor {
         let rows =
             schema::akshare::StockRankLxszThs::from_astock_api(&self.ext_res.http_client).await?;
 
+        // 首先删除当前表格之中的所有数据
+        let sql = format!("TRUNCATE TABLE {}", self.data_table);
+        self.ext_res.ch_client.query(&sql).execute().await?;
+
         let mut inserter = self.ext_res.ch_client.inserter(&self.data_table)?;
         for row in rows {
             inserter.write(&row)?;
@@ -549,6 +562,21 @@ mod test {
         };
 
         stock_news_main_cx_monitor.collect_data().await.unwrap();
+    }
+
+    #[tokio::test]
+    async fn test_stock_rank_lxsz_ths_monitor() {
+        let ext_res = ExternalResource {
+            ch_client: TEST_CH_CLIENT.clone(),
+            http_client: TEST_HTTP_CLIENT.clone(),
+        };
+
+        let stock_rank_lxsz_ths_monitor = StockRankLxszThsMonitor {
+            data_table: "stock_rank_lxsz_ths".to_owned(),
+            ext_res: ext_res.clone(),
+        };
+
+        stock_rank_lxsz_ths_monitor.collect_data().await.unwrap();
     }
 
     #[test]
