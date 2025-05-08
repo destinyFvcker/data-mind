@@ -14,6 +14,24 @@ use rskafka::{
 use sqlx::{Executor, MySqlPool};
 
 pub const AK_TOOLS_BASE_URL: &'static str = "http://127.0.0.1:8080/api/public";
+#[cfg(test)]
+pub(super) static TEST_CH_CLIENT: std::sync::LazyLock<clickhouse::Client> =
+    std::sync::LazyLock::new(|| {
+        clickhouse::Client::default()
+            .with_url("http://127.0.0.1:8123")
+            .with_user("default")
+            .with_password("defaultpassword")
+            .with_database("akshare")
+    });
+#[cfg(test)]
+pub(super) static TEST_HTTP_CLIENT: std::sync::LazyLock<reqwest::Client> =
+    std::sync::LazyLock::new(|| {
+        reqwest::ClientBuilder::new()
+            .connect_timeout(Duration::from_secs(10))
+            .timeout(Duration::from_secs(40))
+            .build()
+            .unwrap()
+    });
 
 /// 通过指定的数据字典项拼接出实际的aktools目标数据url
 pub fn with_base_url(path: &str) -> String {

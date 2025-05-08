@@ -93,7 +93,7 @@ async fn stock_rank_cxd_ths(
     Ok(Json(data))
 }
 
-/// 同花顺-数据中心-技术选股-连续上涨  
+/// 同花顺-数据中心-技术选股-连续上涨(连续上涨天数超过一周)
 #[utoipa::path(
     tag = API_TAG,
     responses(
@@ -102,15 +102,15 @@ async fn stock_rank_cxd_ths(
 )]
 #[get("/stock_rank_lxsz_ths")]
 async fn stock_rank_lxsz_ths(
-    reqwest_client: Data<reqwest::Client>,
+    ch_client: Data<clickhouse::Client>,
 ) -> actix_web::Result<Json<Vec<StockRankLxszThs>>> {
-    let data = StockRankLxszThs::from_astock_api(&reqwest_client)
+    let data = StockRankLxszThs::fetch_with_min_rising_days(&ch_client, 7)
         .await
         .map_err(|err| actix_web::error::ErrorInternalServerError(err))?;
     Ok(Json(data))
 }
 
-/// 同花顺-数据中心-技术选股-连续下跌  
+/// 同花顺-数据中心-技术选股-连续下跌
 #[utoipa::path(
     tag = API_TAG,
     responses(
