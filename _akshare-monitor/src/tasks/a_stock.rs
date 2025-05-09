@@ -22,12 +22,12 @@ use super::{TRADE_TIME_CRON, in_trade_time};
 
 /// 模块顶级方法，用于暴露给父模块调用将相关调度任务加入到全局调度器之中
 pub(super) async fn start_a_stock_tasks(ext_res: ExternalResource) {
-    let realtime_stock_monitor = RealTimeStockMonitor {
-        data_url: with_base_url("/stock_zh_a_spot_em"),
-        data_table: "astock_realtime_data".to_owned(),
-        ext_res: ext_res.clone(),
-    };
-    SCHEDULE_TASK_MANAGER.add_task(realtime_stock_monitor).await;
+    // let realtime_stock_monitor = RealTimeStockMonitor {
+    //     data_url: with_base_url("/stock_zh_a_spot_em"),
+    //     data_table: "astock_realtime_data".to_owned(),
+    //     ext_res: ext_res.clone(),
+    // };
+    // SCHEDULE_TASK_MANAGER.add_task(realtime_stock_monitor).await;
 
     let stock_zh_a_hist_monitor = StockZhAHistMonitor {
         data_url: with_base_url("/stock_zh_a_hist"),
@@ -136,7 +136,7 @@ impl StockZhAHistMonitor {
         end_date: &str,
         adj_type: StockAdjustmentType,
     ) -> anyhow::Result<Vec<repository::StockZhAHist>> {
-        let backoff_s = config_backoff(5, 30);
+        let backoff_s = config_backoff(5, 40);
         let ch_data: Vec<repository::StockZhAHist> = backoff::future::retry(backoff_s, || async {
             let api_data: Vec<schema::akshare::StockZhAHist> = self
                 .ext_res
@@ -215,7 +215,7 @@ impl StockZhAHistMonitor {
         let codes = get_distinct_code(&self.ext_res.ch_client).await?;
         // println!("codes length = {}", codes.len());
         let now_date = Utc::now().with_timezone(&CST);
-        let start_date = now_date - chrono::Duration::days(30);
+        let start_date = now_date - chrono::Duration::days(50);
 
         let end = now_date
             .format("%Y%m%d")
