@@ -504,9 +504,105 @@ impl StockNewsMainCx {
     }
 }
 
+/// 移动平均线数据(MA5/MA10/MA20)
+#[derive(Debug, Serialize, Deserialize, Row)]
+pub struct MALinesRepo {
+    /// 数据点日期
+    #[serde(with = "clickhouse::serde::chrono::date")]
+    pub date: NaiveDate,
+    /// 数据点日期对应的MA5值
+    pub ma5: Option<f64>,
+    /// 数据点日期对应的MA10值
+    pub ma10: Option<f64>,
+    /// 数据点日期对应的MA20值
+    pub ma20: Option<f64>,
+}
+
+impl MALinesRepo {
+    /// 获取对应`stock_id`从当日开始倒推`limit_days`之中每天对应的5日平均线、
+    /// 10日平均线、20日平均线的数据。
+    pub async fn fetch_with_limit(
+        ch_client: &clickhouse::Client,
+        stock_id: &str,
+        limit_days: u32,
+    ) -> anyhow::Result<Vec<Self>> {
+        let data = ch_client
+            .query(
+                r#"
+SELECT
+    date,
+    ma5,
+    ma10,
+    ma20
+FROM (
+    SELECT
+        date,
+        CASE
+            WHEN count() OVER (
+                PARTITION BY code
+                ORDER BY date ASC
+                ROWS BETWEEN 4 PRECEDING AND CURRENT ROW
+            ) = 5
+            THEN round(avg(argMax(close, ts)) OVER (
+                PARTITION BY code
+                ORDER BY date ASC
+                ROWS BETWEEN 4 PRECEDING AND CURRENT ROW
+            ), 2)
+            ELSE NULL
+        END AS ma5,
+
+        CASE
+            WHEN count() OVER (
+                PARTITION BY code
+                ORDER BY date ASC
+                ROWS BETWEEN 9 PRECEDING AND CURRENT ROW
+            ) = 10
+            THEN round(avg(argMax(close, ts)) OVER (
+                PARTITION BY code
+                ORDER BY date ASC
+                ROWS BETWEEN 9 PRECEDING AND CURRENT ROW
+            ), 2)
+            ELSE NULL
+        END AS ma10,
+
+        CASE
+            WHEN count() OVER (
+                PARTITION BY code
+                ORDER BY date ASC
+                ROWS BETWEEN 19 PRECEDING AND CURRENT ROW
+            ) = 20
+            THEN round(avg(argMax(close, ts)) OVER (
+                PARTITION BY code
+                ORDER BY date ASC
+                ROWS BETWEEN 19 PRECEDING AND CURRENT ROW
+            ), 2)
+            ELSE NULL
+        END AS ma20
+    FROM stock_zh_a_hist
+    WHERE adj_type = 0
+        AND code = ?
+    GROUP BY code, date
+    ORDER BY date DESC
+    LIMIT ?
+) AS sub
+ORDER BY date ASC
+        "#,
+            )
+            .bind(stock_id)
+            .bind(limit_days)
+            .fetch_all()
+            .await?;
+        Ok(data)
+    }
+}
+
 #[cfg(test)]
 mod test {
     use chrono::{DateTime, Utc};
+
+    use crate::utils::TEST_CH_CLIENT;
+
+    use super::*;
 
     #[test]
     fn test_parse_time_from_str() {
@@ -520,6 +616,15 @@ mod test {
         let pub_time = DateTime::parse_from_str(pub_time_str, "%Y-%m-%d %H:%M:%S%.3f %z").unwrap();
         let utc_time: DateTime<Utc> = pub_time.with_timezone(&Utc);
         println!("interval_time = {pub_time:?}, utc time = {utc_time:?}");
+    }
+
+    #[tokio::test]
+    async fn test_fetch_ma_with_limit() {
+        let data = MALinesRepo::fetch_with_limit(&TEST_CH_CLIENT, "603777", 90)
+            .await
+            .unwrap();
+
+        println!("{}", serde_json::to_string_pretty(&data).unwrap())
     }
 }
 
