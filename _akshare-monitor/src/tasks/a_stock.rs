@@ -136,7 +136,7 @@ impl StockZhAHistMonitor {
         end_date: &str,
         adj_type: StockAdjustmentType,
     ) -> anyhow::Result<Vec<repository::StockZhAHist>> {
-        let backoff_s = config_backoff(5, 40);
+        let backoff_s = config_backoff(20, 120);
         let ch_data: Vec<repository::StockZhAHist> = backoff::future::retry(backoff_s, || async {
             let api_data: Vec<schema::akshare::StockZhAHist> = self
                 .ext_res
@@ -215,7 +215,7 @@ impl StockZhAHistMonitor {
         let codes = get_distinct_code(&self.ext_res.ch_client).await?;
         // println!("codes length = {}", codes.len());
         let now_date = Utc::now().with_timezone(&CST);
-        let start_date = now_date - chrono::Duration::days(60);
+        let start_date = now_date - chrono::Duration::days(90);
 
         let end = now_date
             .format("%Y%m%d")
