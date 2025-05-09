@@ -156,7 +156,8 @@ impl TaskManager {
                 .await
                 .inspect_err(|err| {
                     ftlog::error!("[trigger_task] task_meta = {task_meta:?}, error = {err}")
-                })
+                });
+            ftlog::info!("[trigger_task complete] task_meta = {task_meta:?}");
         });
     }
 

@@ -2,6 +2,21 @@
 
 AI-powered Data Middleware
 
+## monitor
+
+查看现有调度任务
+
+```shell
+curl -v "http://localhost:18803/scheduler?tag=All" | jq
+```
+
+手动触发一个调度任务内容
+
+```shell
+# task uuid可以通过上面的“查看现有调度任务获得”
+curl -v localhost:18803/scheduler/:task_uuid
+```
+
 ## for local dev
 
 在使用`docker compose up`启动项目相关基础设置之前，(假如没有的话)请务必先在**项目根目录**下创建一个`.env`文件，并放入下面这些环境变量定义：
