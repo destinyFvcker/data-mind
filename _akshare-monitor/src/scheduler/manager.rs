@@ -154,10 +154,10 @@ impl TaskManager {
         tokio::spawn(async move {
             Box::into_pin(schedulable.execute())
                 .await
+                .inspect(|_| ftlog::info!("[trigger_task complete] task_meta = {task_meta:?}"))
                 .inspect_err(|err| {
                     ftlog::error!("[trigger_task] task_meta = {task_meta:?}, error = {err}")
                 });
-            ftlog::info!("[trigger_task complete] task_meta = {task_meta:?}");
         });
     }
 
