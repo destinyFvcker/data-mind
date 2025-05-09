@@ -215,7 +215,7 @@ impl StockZhAHistMonitor {
         let codes = get_distinct_code(&self.ext_res.ch_client).await?;
         // println!("codes length = {}", codes.len());
         let now_date = Utc::now().with_timezone(&CST);
-        let start_date = now_date - chrono::Duration::days(50);
+        let start_date = now_date - chrono::Duration::days(90);
 
         let end = now_date
             .format("%Y%m%d")
