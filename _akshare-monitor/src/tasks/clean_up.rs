@@ -32,11 +32,11 @@ impl Schedulable for CleanUp {
 }
 
 /// 定时清除a股实时行情数据
-async fn cleanup_astock_realtime_data(ch_client: &clickhouse::Client) -> anyhow::Result<()> {
-    let sql = r#"
-        ALTER TABLE akshare.astock_realtime_data
-        DELETE WHERE date < toDate(now() - INTERVAL 2 DAY)
-    "#;
-    ch_client.query(sql).execute().await?;
+async fn cleanup_astock_realtime_data(_ch_client: &clickhouse::Client) -> anyhow::Result<()> {
+    // let sql = r#"
+    //     ALTER TABLE akshare.astock_realtime_data
+    //     DELETE WHERE date < toDate(now() - INTERVAL 2 DAY)
+    // "#;
+    // ch_client.query(sql).execute().await?;
     Ok(())
 }
