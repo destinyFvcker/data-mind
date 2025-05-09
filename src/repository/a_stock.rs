@@ -5,6 +5,7 @@ use clickhouse::Row;
 use serde::{Deserialize, Serialize};
 use serde_repr::{Deserialize_repr, Serialize_repr};
 use strum::EnumIter;
+use utoipa::ToSchema;
 
 use crate::{
     schema::{self, akshare::a_stock},
@@ -183,12 +184,15 @@ impl RealtimeStockMarketRecord {
 // ---------------------------------------------------------------------------------
 
 /// 日频A股数据复权方式
-#[derive(Serialize_repr, Deserialize_repr, PartialEq, Debug, EnumIter, Clone, Copy)]
+#[derive(Serialize_repr, Deserialize_repr, PartialEq, Debug, EnumIter, Clone, Copy, ToSchema)]
 #[repr(u8)]
 pub enum StockAdjustmentType {
-    None,     // 不复权
-    Forward,  // 前复权
-    Backward, // 后复权
+    /// 不复权
+    None,
+    /// 前复权
+    Forward,
+    /// 后复权
+    Backward,
 }
 
 impl StockAdjustmentType {
@@ -596,6 +600,174 @@ ORDER BY date ASC
     }
 }
 
+/// 日频K线数据
+#[derive(Debug, Serialize, Deserialize, Row)]
+pub struct DailyKlineRepo {
+    /// 数据日期
+    #[serde(with = "clickhouse::serde::chrono::date")]
+    pub date: NaiveDate,
+    /// 开盘价
+    pub open: f64,
+    /// 收盘价
+    pub close: f64,
+    /// 最高价
+    pub high: f64,
+    /// 最低价
+    pub low: f64,
+}
+
+impl DailyKlineRepo {
+    pub async fn fetch_with_limit(
+        ch_client: &clickhouse::Client,
+        adj_type: StockAdjustmentType,
+        stock_id: &str,
+        limit_days: u32,
+    ) -> anyhow::Result<Vec<Self>> {
+        let data = ch_client
+            .query(
+                r#"
+SELECT
+    date,
+    open,
+    close,
+    high,
+    low
+FROM (
+    SELECT
+        date,
+        argMax(open, ts) as open,
+        argMax(close, ts) as close,
+        argMax(high, ts) as high,
+        argMax(low, ts) as low
+    FROM stock_zh_a_hist
+    WHERE adj_type = ?
+        AND code = ?
+    GROUP BY code, date
+    ORDER BY date DESC
+    LIMIT ?
+) AS sub
+ORDER BY date ASC 
+        "#,
+            )
+            .bind(adj_type)
+            .bind(stock_id)
+            .bind(limit_days)
+            .fetch_all()
+            .await?;
+
+        Ok(data)
+    }
+}
+
+/// 日频成交量数据
+#[derive(Debug, Serialize, Deserialize, Row)]
+pub struct DailyTradingVolumeRepo {
+    /// 数据日期
+    #[serde(with = "clickhouse::serde::chrono::date")]
+    pub date: NaiveDate,
+    /// 交易量(手)
+    pub trading_volume: f64,
+}
+
+impl DailyTradingVolumeRepo {
+    pub async fn fetch_with_limit(
+        ch_client: &clickhouse::Client,
+        adj_type: StockAdjustmentType,
+        stock_id: &str,
+        limit_days: u32,
+    ) -> anyhow::Result<Vec<Self>> {
+        let data = ch_client
+            .query(
+                r#"
+SELECT
+    date,
+    trading_volume
+FROM (
+    SELECT
+        date,
+        argMax(trading_volume, ts) as trading_volume
+    FROM stock_zh_a_hist
+    WHERE adj_type = ?
+        AND code = ?
+    GROUP BY code, date
+    ORDER BY date DESC
+    LIMIT ?
+) AS sub
+ORDER BY date ASC 
+    "#,
+            )
+            .bind(adj_type)
+            .bind(stock_id)
+            .bind(limit_days)
+            .fetch_all()
+            .await?;
+
+        Ok(data)
+    }
+}
+
+/// 日频其它指标数据
+#[derive(Debug, Serialize, Deserialize, Row)]
+pub struct DailyIndicatorRepo {
+    /// 数据日期
+    #[serde(with = "clickhouse::serde::chrono::date")]
+    pub date: NaiveDate,
+    /// 成交额,注意单位(元)
+    pub trading_value: f64,
+    /// 振幅(%)
+    pub amplitude: f64,
+    /// 换手率(%)
+    pub turnover_rate: f64,
+    /// 涨跌幅(%)
+    pub change_percent: f64,
+    /// 涨跌额,注意单位(元)
+    pub change_amount: f64,
+}
+
+impl DailyIndicatorRepo {
+    pub async fn fetch_with_limit(
+        ch_client: &clickhouse::Client,
+        adj_type: StockAdjustmentType,
+        stock_id: &str,
+        limit_days: u32,
+    ) -> anyhow::Result<Vec<Self>> {
+        let data = ch_client
+            .query(
+                r#"
+SELECT
+    date,
+    trading_value,
+    amplitude,
+    turnover_rate,
+    change_percentage,
+    change_amount
+FROM (
+    SELECT
+        date,
+        argMax(trading_value, ts) as trading_value,
+        argMax(amplitude, ts) as amplitude,
+        argMax(turnover_rate, ts) as turnover_rate,
+        argMax(change_percentage, ts) as change_percentage,
+        argMax(change_amount, ts) as change_amount
+    FROM stock_zh_a_hist
+    WHERE adj_type = ?
+        AND code = ?
+    GROUP BY code, date
+    ORDER BY date DESC
+    LIMIT ?
+) AS sub
+ORDER BY date ASC 
+        "#,
+            )
+            .bind(adj_type)
+            .bind(stock_id)
+            .bind(limit_days)
+            .fetch_all()
+            .await?;
+        Ok(data)
+    }
+}
+
 #[cfg(test)]
 mod test {
     use chrono::{DateTime, Utc};
@@ -625,6 +797,39 @@ mod test {
             .unwrap();
 
         println!("{}", serde_json::to_string_pretty(&data).unwrap())
+    }
+
+    #[tokio::test]
+    async fn test_fetch_daily_stock_infos() {
+        let data = DailyKlineRepo::fetch_with_limit(
+            &TEST_CH_CLIENT,
+            StockAdjustmentType::Backward,
+            "603777",
+            30,
+        )
+        .await
+        .unwrap();
+        println!("{:?}\n", data);
+
+        let data = DailyTradingVolumeRepo::fetch_with_limit(
+            &TEST_CH_CLIENT,
+            StockAdjustmentType::Backward,
+            "603777",
+            30,
+        )
+        .await
+        .unwrap();
+        println!("{:?}\n", data);
+
+        let data = DailyIndicatorRepo::fetch_with_limit(
+            &TEST_CH_CLIENT,
+            StockAdjustmentType::Backward,
+            "603777",
+            30,
+        )
+        .await
+        .unwrap();
+        println!("{:?}\n", data);
     }
 }
 
