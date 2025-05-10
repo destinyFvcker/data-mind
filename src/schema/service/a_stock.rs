@@ -5,6 +5,7 @@ use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 
 use crate::repository::{DailyIndicatorRepo, DailyKlineRepo, DailyTradingVolumeRepo, MALinesRepo};
+
 pub use crate::schema::akshare::StockIndividualInfoEm;
 
 /// 移动平均线数据(MA5/MA10/MA20)

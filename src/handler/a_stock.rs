@@ -95,7 +95,7 @@ struct DailyStockQuery {
     /// 需要获取对应日频数据的股票代码
     #[param(example = "603777")]
     stock_id: String,
-    /// 复权选项(不复权 = 1、前复权 = 2、后复权 = 3)
+    /// 复权选项(不复权 = 0、前复权 = 1、后复权 = 2)
     #[param(example = 0)]
     adj_type: StockAdjustmentType,
     /// 从今日开始的倒推时间范围
