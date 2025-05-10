@@ -136,7 +136,7 @@ impl StockZhAHistMonitor {
         end_date: &str,
         adj_type: StockAdjustmentType,
     ) -> anyhow::Result<Vec<repository::StockZhAHist>> {
-        let backoff_s = config_backoff(60, 600);
+        let backoff_s = config_backoff(60, 300);
         let ch_data: Vec<repository::StockZhAHist> = backoff::future::retry(backoff_s, || async {
             let api_data: Vec<schema::akshare::StockZhAHist> = self
                 .ext_res
@@ -230,7 +230,7 @@ impl StockZhAHistMonitor {
 
         let hist_data: Vec<Vec<repository::StockZhAHist>> = stream::iter(codes)
             .map(|code| self.req_data(code, start, end))
-            .buffer_unordered(64)
+            .buffer_unordered(48)
             .try_collect()
             .await?;
 
