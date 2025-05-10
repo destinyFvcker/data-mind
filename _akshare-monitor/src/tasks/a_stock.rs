@@ -212,7 +212,7 @@ impl StockZhAHistMonitor {
 
     /// 收集东方财富-沪深京 A 股日频率数据
     pub async fn collect_data(&self) -> anyhow::Result<()> {
-        let codes = get_distinct_code(&self.ext_res.ch_client).await?;
+        let mut codes = get_distinct_code(&self.ext_res.ch_client).await?;
         // println!("codes length = {}", codes.len());
         let now_date = Utc::now().with_timezone(&CST);
         let start_date = now_date - chrono::Duration::days(90);
@@ -228,20 +228,34 @@ impl StockZhAHistMonitor {
             .parse::<u32>()
             .unwrap();
 
-        let hist_data: Vec<Vec<repository::StockZhAHist>> = stream::iter(codes)
-            .map(|code| self.req_data(code, start, end))
-            .buffer_unordered(16)
-            .try_collect()
-            .await?;
+        while !codes.is_empty() {
+            // 每次拿出前 512 个
+            let chunk: Vec<String> = if codes.len() > 512 {
+                codes.drain(..512).collect()
+            } else {
+                codes.drain(..).collect()
+            };
 
-        let hist_data = hist_data.into_iter().flatten().collect::<Vec<_>>();
+            let hist_data: Vec<Vec<repository::StockZhAHist>> = stream::iter(chunk)
+                .map(|code| self.req_data(code, start, end))
+                .buffer_unordered(32)
+                .try_collect()
+                .await?;
 
-        let mut inserter = self.ext_res.ch_client.inserter(&self.data_table)?;
-        // .with_option("insert_deduplicate", "1");
-        for row in hist_data {
-            inserter.write(&row)?;
+            let hist_data = hist_data.into_iter().flatten().collect::<Vec<_>>();
+
+            let mut inserter = self.ext_res.ch_client.inserter(&self.data_table)?;
+            for row in hist_data {
+                inserter.write(&row)?;
+            }
+            inserter.end().await?;
+
+            ftlog::info!(
+                "[stock_zh_a_hist collect] batch complete, remain len = {}",
+                codes.len()
+            );
+            tokio::time::sleep(std::time::Duration::from_secs(30)).await;
         }
-        inserter.end().await?;
 
         Ok(())
     }
