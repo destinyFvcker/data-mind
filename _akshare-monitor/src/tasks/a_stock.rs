@@ -230,7 +230,7 @@ impl StockZhAHistMonitor {
 
         let hist_data: Vec<Vec<repository::StockZhAHist>> = stream::iter(codes)
             .map(|code| self.req_data(code, start, end))
-            .buffer_unordered(48)
+            .buffer_unordered(16)
             .try_collect()
             .await?;
 
