@@ -10,7 +10,7 @@ use crate::utils::with_base_url;
 ///
 /// stock_zh_index_spot_sina 新浪财经-中国股票指数数据数据接口
 #[derive(Debug, Deserialize)]
-pub struct StockZhIndexSpotSina {
+pub struct AkStockZhIndexSpotSina {
     /// 代码
     #[serde(rename(deserialize = "代码"))]
     pub code: String,
@@ -50,7 +50,7 @@ pub struct StockZhIndexSpotSina {
 ///
 /// 接口: stock_zh_index_daily 股票指数的历史数据按日频率更新
 #[derive(Debug, Deserialize)]
-pub struct StockZhIndexDaily {
+pub struct AkStockZhIndexDaily {
     /// 时间戳
     pub date: String,
     /// 最高
@@ -69,7 +69,7 @@ pub struct StockZhIndexDaily {
 ///
 /// 50ETF 期权波动率指数 QVIX; 又称中国版的恐慌指数
 #[derive(Debug, Deserialize)]
-pub struct IndexOption50EtfQvix {
+pub struct AkIndexOption50EtfQvix {
     /// 时间戳
     pub date: String,
     /// 开盘
@@ -84,16 +84,16 @@ pub struct IndexOption50EtfQvix {
 
 /// 股票指数信息一览表表项
 #[derive(Debug, Deserialize, Serialize, ToSchema, Row)]
-pub struct IndexStockInfo {
+pub struct AkIndexStockInfo {
     /// 指数名称
-    display_name: String,
+    pub display_name: String,
     /// 指数代码
-    index_code: String,
+    pub index_code: String,
     // 指数发布日期,格式为%Y/%m/%d
-    publish_date: String,
+    pub publish_date: String,
 }
 
-impl IndexStockInfo {
+impl AkIndexStockInfo {
     pub async fn from_astock_api(reqwest_client: &reqwest::Client) -> anyhow::Result<Vec<Self>> {
         let data: Vec<Self> = reqwest_client
             .get(with_base_url("/index_stock_info"))

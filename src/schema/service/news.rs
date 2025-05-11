@@ -72,7 +72,7 @@ impl StockNewsMainCx {
     }
 }
 
-pub use crate::schema::akshare::StockNewsEm;
+pub use crate::schema::akshare::AkStockNewsEm;
 
 #[cfg(test)]
 mod test {

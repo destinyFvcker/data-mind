@@ -181,6 +181,18 @@ pub async fn connect_kafka(
         .unwrap()
 }
 
+/// 获取对应股票交易所的前缀
+pub fn get_exchange_prefix<'a, 'b>(stock_code: &'a str) -> Option<&'b str> {
+    match &stock_code[0..3] {
+        "600" | "601" | "603" | "688" => Some("SH"),
+        "900" => Some("SH"),
+        "000" | "001" | "002" | "003" => Some("SZ"),
+        "200" | "300" => Some("SZ"),
+        "83" | "87" => Some("BJ"),
+        _ => None,
+    }
+}
+
 #[cfg(test)]
 mod test {
 
@@ -198,5 +210,37 @@ mod test {
         // let date_time = <DateTime<Utc>>::from_str("2025-04-22T00:00:00.000").unwrap();
         // let naive_date = date_time.naive_local();
         // println!("{:?}", naive_date);
+    }
+
+    #[tokio::test]
+    async fn test_get_exchange_prefix() {
+        let codes = TEST_CH_CLIENT
+            .query(
+                "SELECT DISTINCT code \
+            FROM astock_realtime_data \
+            WHERE is_suspended = false",
+            )
+            .fetch_all::<String>()
+            .await
+            .unwrap();
+
+        for mut code in codes {
+            if code == "002527" {
+                continue;
+            }
+            println!("get {code} prefix");
+            let prefix = get_exchange_prefix(&code).unwrap();
+            code.insert_str(0, prefix);
+            println!("test {code}");
+            TEST_HTTP_CLIENT
+                .get(with_base_url("/stock_individual_basic_info_xq"))
+                .query(&[("symbol", code.as_str())])
+                .send()
+                .await
+                .unwrap()
+                .error_for_status()
+                .unwrap();
+            println!("{code} succuess");
+        }
     }
 }

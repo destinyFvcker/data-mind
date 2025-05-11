@@ -10,13 +10,14 @@ use utoipa_actix_web::{scope, service_config::ServiceConfig};
 
 use crate::{
     repository::{
-        DailyIndicatorRepo, DailyKlineRepo, DailyTradingVolumeRepo, MALinesRepo,
-        StockAdjustmentType,
+        akshare::StockAdjustmentType,
+        service::{DailyIndicatorFetch, DailyKlineFetch, DailyTradingVolumeFetch, MALinesFetch},
     },
     schema::{
-        akshare::StockZhAStEm,
+        akshare::AkStockZhAStEm,
         service::a_stock::{
-            DailyIndicator, DailyKline, DailyTradingVolume, MALines, StockIndividualInfoEm,
+            ServDailyIndicator, ServDailyKline, ServDailyTradingVolume, ServMALines,
+            ServStockIndividualInfoEm,
         },
     },
 };
@@ -42,7 +43,7 @@ pub fn mount_astock_scope(config: &mut ServiceConfig) {
         ("stock_id", description = "需要获取个股信息对应的股票代码", example = "603777")
     ),
     responses(
-        (status = 200, description = "成功获取个股信息", body = StockIndividualInfoEm),
+        (status = 200, description = "成功获取个股信息", body = ServStockIndividualInfoEm),
         (status = 404, description = "对应个股信息不存在")
     )
 )]
@@ -50,9 +51,9 @@ pub fn mount_astock_scope(config: &mut ServiceConfig) {
 async fn fetch_stock_individual_info(
     stock_id: web::Path<String>,
     reqwest_client: Data<reqwest::Client>,
-) -> actix_web::Result<Json<StockIndividualInfoEm>> {
+) -> actix_web::Result<Json<ServStockIndividualInfoEm>> {
     let stock_id = stock_id.into_inner();
-    let data = StockIndividualInfoEm::from_astock_api(&reqwest_client, &stock_id)
+    let data = ServStockIndividualInfoEm::from_astock_api(&reqwest_client, &stock_id)
         .await
         .map_err(|err| actix_web::error::ErrorNotFound(err))?;
     Ok(Json(data))
@@ -75,16 +76,16 @@ struct MAQuery {
         MAQuery
     ),
     responses(
-        (status = 200, description = "成功获取请求的股票Id对应的时间范围内的移动平均线数据", body = Vec<MALines>)
+        (status = 200, description = "成功获取请求的股票Id对应的时间范围内的移动平均线数据", body = Vec<ServMALines>)
     )
 )]
 #[get("/ma_with_limit")]
 async fn fetch_mas_with_limit(
     ma_query: web::Query<MAQuery>,
     ch_client: web::Data<clickhouse::Client>,
-) -> actix_web::Result<Json<Vec<MALines>>> {
-    let data: Vec<MALines> =
-        MALinesRepo::fetch_with_limit(&ch_client, &ma_query.stock_id, ma_query.limit_days)
+) -> actix_web::Result<Json<Vec<ServMALines>>> {
+    let data: Vec<ServMALines> =
+        MALinesFetch::fetch_with_limit(&ch_client, &ma_query.stock_id, ma_query.limit_days)
             .await
             .map_err(|err| actix_web::error::ErrorInternalServerError(err))?
             .into_iter()
@@ -113,15 +114,15 @@ struct DailyStockQuery {
         DailyStockQuery
     ),
     responses(
-        (status = 200, description = "获取对应时间范围的日频K线数据成功", body = Vec<DailyKline>)
+        (status = 200, description = "获取对应时间范围的日频K线数据成功", body = Vec<ServDailyKline>)
     )
 )]
 #[get("/daily_kline")]
 async fn fetch_daily_kline(
     query: web::Query<DailyStockQuery>,
     ch_client: web::Data<clickhouse::Client>,
-) -> actix_web::Result<Json<Vec<DailyKline>>> {
-    let data: Vec<DailyKline> = DailyKlineRepo::fetch_with_limit(
+) -> actix_web::Result<Json<Vec<ServDailyKline>>> {
+    let data: Vec<ServDailyKline> = DailyKlineFetch::fetch_with_limit(
         &ch_client,
         query.adj_type,
         &query.stock_id,
@@ -142,15 +143,15 @@ async fn fetch_daily_kline(
         DailyStockQuery
     ),
     responses(
-        (status = 200, description = "获取对应时间范围的日频交易量数据成功", body = Vec<DailyTradingVolume>)
+        (status = 200, description = "获取对应时间范围的日频交易量数据成功", body = Vec<ServDailyTradingVolume>)
     )
 )]
 #[get("/daily_trading_volume")]
 async fn fetch_daily_trading_volume(
     query: web::Query<DailyStockQuery>,
     ch_client: web::Data<clickhouse::Client>,
-) -> actix_web::Result<Json<Vec<DailyTradingVolume>>> {
-    let data: Vec<DailyTradingVolume> = DailyTradingVolumeRepo::fetch_with_limit(
+) -> actix_web::Result<Json<Vec<ServDailyTradingVolume>>> {
+    let data: Vec<ServDailyTradingVolume> = DailyTradingVolumeFetch::fetch_with_limit(
         &ch_client,
         query.adj_type,
         &query.stock_id,
@@ -171,15 +172,15 @@ async fn fetch_daily_trading_volume(
         DailyStockQuery
     ),
     responses(
-        (status = 200, description = "获取对应时间范围的日频交易指标数据成功", body = Vec<DailyIndicator>)
+        (status = 200, description = "获取对应时间范围的日频交易指标数据成功", body = Vec<ServDailyIndicator>)
     )
 )]
 #[get("/daily_indicator")]
 async fn fetch_daily_indicator(
     query: web::Query<DailyStockQuery>,
     ch_client: web::Data<clickhouse::Client>,
-) -> actix_web::Result<Json<Vec<DailyIndicator>>> {
-    let data: Vec<DailyIndicator> = DailyIndicatorRepo::fetch_with_limit(
+) -> actix_web::Result<Json<Vec<ServDailyIndicator>>> {
+    let data: Vec<ServDailyIndicator> = DailyIndicatorFetch::fetch_with_limit(
         &ch_client,
         query.adj_type,
         &query.stock_id,
@@ -197,14 +198,14 @@ async fn fetch_daily_indicator(
 #[utoipa::path(
     tag = API_TAG,
     responses(
-        (status = 200, description = "成功获取当前交易日风险警示版的所有股票的行情数据", body = Vec<StockZhAStEm>)
+        (status = 200, description = "成功获取当前交易日风险警示版的所有股票的行情数据", body = Vec<AkStockZhAStEm>)
     )
 )]
 #[get("/stock_zh_a_st")]
 async fn fetch_stock_zh_a_st(
     reqwest_client: Data<reqwest::Client>,
-) -> actix_web::Result<Json<Vec<StockZhAStEm>>> {
-    let data = StockZhAStEm::from_astock_api(&reqwest_client)
+) -> actix_web::Result<Json<Vec<AkStockZhAStEm>>> {
+    let data = AkStockZhAStEm::from_astock_api(&reqwest_client)
         .await
         .map_err(|err| actix_web::error::ErrorInternalServerError(err))?;
     Ok(Json(data))

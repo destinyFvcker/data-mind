@@ -13,8 +13,20 @@ use crate::{
     tasks::utils::get_distinct_code,
 };
 use data_mind::{
-    repository::{self, FlowDirection, StockAdjustmentType},
-    schema,
+    repository::{
+        self,
+        akshare::{
+            self, FlowDirection, StockAdjustmentType, StockHsgtHistEmInsert, StockNewsMainCxInsert,
+            StockZhAHistInsert, StockZtPoolEmInsert,
+        },
+    },
+    schema::{
+        self,
+        akshare::{
+            AkStockHsgtHistEm, AkStockNewsMainCx, AkStockRankLxszThs, AkStockZhAHist,
+            AkStockZtPoolEm,
+        },
+    },
     utils::{config_backoff, with_base_url},
 };
 
@@ -105,7 +117,7 @@ impl RealTimeStockMonitor {
 
         let astock_realtime_data_row = result
             .into_iter()
-            .map(|record| repository::RealtimeStockMarketRecord::from_with_ts(record, ts))
+            .map(|record| repository::akshare::RealtimeStockMarketRecord::from_with_ts(record, ts))
             .collect::<Vec<_>>();
 
         let mut inserter = self.ext_res.ch_client.inserter(&self.data_table)?;
@@ -135,10 +147,10 @@ impl StockZhAHistMonitor {
         start_date: &str,
         end_date: &str,
         adj_type: StockAdjustmentType,
-    ) -> anyhow::Result<Vec<repository::StockZhAHist>> {
+    ) -> anyhow::Result<Vec<StockZhAHistInsert>> {
         let backoff_s = config_backoff(60, 480);
-        let ch_data: Vec<repository::StockZhAHist> = backoff::future::retry(backoff_s, || async {
-            let api_data: Vec<schema::akshare::StockZhAHist> = self
+        let ch_data: Vec<StockZhAHistInsert> = backoff::future::retry(backoff_s, || async {
+            let api_data: Vec<AkStockZhAHist> = self
                 .ext_res
                 .http_client
                 .get(&self.data_url)
@@ -159,8 +171,8 @@ impl StockZhAHistMonitor {
             let now = Utc::now();
             let ch_data = api_data
                 .into_iter()
-                .map(|value| repository::StockZhAHist::from_with_type(value, adj_type, now))
-                .collect::<Vec<repository::StockZhAHist>>();
+                .map(|value| StockZhAHistInsert::from_with_type(value, adj_type, now))
+                .collect::<Vec<StockZhAHistInsert>>();
 
             Ok(ch_data)
         })
@@ -190,22 +202,21 @@ impl StockZhAHistMonitor {
         code: String,
         start_date: u32,
         end_date: u32,
-    ) -> anyhow::Result<Vec<repository::StockZhAHist>> {
+    ) -> anyhow::Result<Vec<StockZhAHistInsert>> {
         let start_date = start_date.to_string();
         let end_date = end_date.to_string();
 
-        let hist_data: Vec<Vec<repository::StockZhAHist>> =
-            stream::iter(StockAdjustmentType::iter())
-                .then(|adj_type| {
-                    self.req_data_with_type(
-                        code.as_str(),
-                        start_date.as_str(),
-                        end_date.as_str(),
-                        adj_type,
-                    )
-                })
-                .try_collect()
-                .await?;
+        let hist_data: Vec<Vec<StockZhAHistInsert>> = stream::iter(StockAdjustmentType::iter())
+            .then(|adj_type| {
+                self.req_data_with_type(
+                    code.as_str(),
+                    start_date.as_str(),
+                    end_date.as_str(),
+                    adj_type,
+                )
+            })
+            .try_collect()
+            .await?;
 
         Ok(hist_data.into_iter().flatten().collect())
     }
@@ -236,7 +247,7 @@ impl StockZhAHistMonitor {
                 codes.drain(..).collect()
             };
 
-            let hist_data: Vec<Vec<repository::StockZhAHist>> = stream::iter(chunk)
+            let hist_data: Vec<Vec<StockZhAHistInsert>> = stream::iter(chunk)
                 .map(|code| self.req_data(code, start, end))
                 .buffer_unordered(32)
                 .try_collect()
@@ -273,10 +284,10 @@ impl StockHsgtHistEmMonitor {
     async fn get_dir_data(
         &self,
         flow_dir: FlowDirection,
-    ) -> anyhow::Result<Vec<repository::StockHsgtHistEm>> {
+    ) -> anyhow::Result<Vec<StockHsgtHistEmInsert>> {
         let backoff_s = config_backoff(5, 30);
         let api_data = backoff::future::retry(backoff_s, || async {
-            let api_data: Vec<schema::akshare::StockHsgtHistEm> = self
+            let api_data: Vec<AkStockHsgtHistEm> = self
                 .ext_res
                 .http_client
                 .get(&self.data_url)
@@ -296,12 +307,12 @@ impl StockHsgtHistEmMonitor {
 
         Ok(api_data
             .into_iter()
-            .map(|value| repository::StockHsgtHistEm::from_with_dir_ts(value, flow_dir, now))
+            .map(|value| StockHsgtHistEmInsert::from_with_dir_ts(value, flow_dir, now))
             .collect())
     }
 
-    async fn get_api_data(&self) -> anyhow::Result<Vec<repository::StockHsgtHistEm>> {
-        let api_data: Vec<Vec<repository::StockHsgtHistEm>> = stream::iter(FlowDirection::iter())
+    async fn get_api_data(&self) -> anyhow::Result<Vec<StockHsgtHistEmInsert>> {
+        let api_data: Vec<Vec<StockHsgtHistEmInsert>> = stream::iter(FlowDirection::iter())
             .map(|flow_dir| self.get_dir_data(flow_dir))
             .buffer_unordered(2)
             .try_collect()
@@ -333,15 +344,12 @@ pub struct StockZtPoolEmMonitor {
 
 impl StockZtPoolEmMonitor {
     /// 获取某一天的所有数据
-    async fn get_date_data(
-        &self,
-        date: NaiveDate,
-    ) -> anyhow::Result<Vec<repository::StockZtPoolEm>> {
+    async fn get_date_data(&self, date: NaiveDate) -> anyhow::Result<Vec<StockZtPoolEmInsert>> {
         let formatted = date.format("%Y%m%d").to_string();
         let backoff_s = config_backoff(5, 30);
 
         let api_data = backoff::future::retry(backoff_s, || async {
-            let api_data: Vec<schema::akshare::StockZtPoolEm> = self
+            let api_data: Vec<AkStockZtPoolEm> = self
                 .ext_res
                 .http_client
                 .get(&self.data_url)
@@ -361,12 +369,12 @@ impl StockZtPoolEmMonitor {
 
         Ok(api_data
             .into_iter()
-            .map(|value| repository::StockZtPoolEm::from_with_time(value, date, now))
+            .map(|value| StockZtPoolEmInsert::from_with_time(value, date, now))
             .collect())
     }
 
     /// 获取过去两周的所有涨跌停板数据
-    async fn get_api_data(&self) -> anyhow::Result<Vec<repository::StockZtPoolEm>> {
+    async fn get_api_data(&self) -> anyhow::Result<Vec<StockZtPoolEmInsert>> {
         // 获取当前本地时间
         let now = Local::now().date_naive();
         // 计算14天前的日期
@@ -375,7 +383,7 @@ impl StockZtPoolEmMonitor {
             .map(|diff| start_date + Duration::days(diff))
             .collect::<Vec<_>>();
 
-        let api_data: Vec<Vec<repository::StockZtPoolEm>> = stream::iter(dates)
+        let api_data: Vec<Vec<StockZtPoolEmInsert>> = stream::iter(dates)
             .map(|date| self.get_date_data(date))
             .buffer_unordered(8)
             .try_collect()
@@ -407,8 +415,8 @@ pub struct StockNewsMainCxMonitor {
 }
 
 impl StockNewsMainCxMonitor {
-    async fn get_api_data(&self) -> anyhow::Result<Vec<repository::StockNewsMainCx>> {
-        let res: Vec<schema::akshare::StockNewsMainCx> = self
+    async fn get_api_data(&self) -> anyhow::Result<Vec<StockNewsMainCxInsert>> {
+        let res: Vec<AkStockNewsMainCx> = self
             .ext_res
             .http_client
             .get(with_base_url("/stock_news_main_cx"))
@@ -422,7 +430,7 @@ impl StockNewsMainCxMonitor {
 
         Ok(res
             .into_iter()
-            .map(|value| repository::StockNewsMainCx::from_with_ts(value, now))
+            .map(|value| StockNewsMainCxInsert::from_with_ts(value, now))
             .collect())
     }
 
@@ -448,8 +456,7 @@ pub struct StockRankLxszThsMonitor {
 
 impl StockRankLxszThsMonitor {
     pub async fn collect_data(&self) -> anyhow::Result<()> {
-        let rows =
-            schema::akshare::StockRankLxszThs::from_astock_api(&self.ext_res.http_client).await?;
+        let rows = AkStockRankLxszThs::from_astock_api(&self.ext_res.http_client).await?;
 
         // 首先删除当前表格之中的所有数据
         let sql = format!("TRUNCATE TABLE {}", self.data_table);
@@ -471,7 +478,7 @@ mod test {
 
     use backoff::{Error, ExponentialBackoff, retry};
     use chrono::{Duration, Local, Utc};
-    use data_mind::repository::StockAdjustmentType;
+    use data_mind::repository::akshare::StockAdjustmentType;
     use futures::{StreamExt, stream};
     use serde_json::Value;
     use strum::IntoEnumIterator;

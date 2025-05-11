@@ -6,7 +6,7 @@ use serde::Deserialize;
 use utoipa::IntoParams;
 use utoipa_actix_web::{scope, service_config::ServiceConfig};
 
-use crate::schema::service::news::{StockNewsEm, StockNewsMainCx};
+use crate::schema::service::news::{AkStockNewsEm, StockNewsMainCx};
 
 pub const API_TAG: &'static str = "A股金融新闻";
 pub const API_DESC: &'static str = "获取个股新闻以及精选新闻的接口集合";
@@ -61,16 +61,16 @@ async fn fetch_recent100_news_main_cx(
         ("symbol_id", description = "需要获取新闻信息对应的股票代码", example = "603777")
     ),
     responses(
-        (status = 200, description = "成功获取指定stock的最近100条财经信息", body = Vec<StockNewsEm>)
+        (status = 200, description = "成功获取指定stock的最近100条财经信息", body = Vec<AkStockNewsEm>)
     )
 )]
 #[get("/stock_recent100/{symbol_id}")]
 async fn fetch_recent100_news_em(
     symbol_id: web::Path<String>,
     reqwest_client: Data<reqwest::Client>,
-) -> actix_web::Result<Json<Vec<StockNewsEm>>> {
+) -> actix_web::Result<Json<Vec<AkStockNewsEm>>> {
     let symbol_id = symbol_id.into_inner();
-    let news = StockNewsEm::from_astock_api(&reqwest_client, &symbol_id)
+    let news = AkStockNewsEm::from_astock_api(&reqwest_client, &symbol_id)
         .await
         .map_err(|err| actix_web::error::ErrorInternalServerError(err))?;
     Ok(Json(news))

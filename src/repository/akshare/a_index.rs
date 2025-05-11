@@ -2,13 +2,15 @@ use chrono::{DateTime, NaiveDate, Utc};
 use clickhouse::Row;
 use serde::{Deserialize, Serialize};
 
-use crate::schema;
+use crate::schema::akshare::{AkIndexOption50EtfQvix, AkStockZhIndexDaily};
+
+pub use crate::schema::akshare::AkIndexStockInfo as IndexStockInfoInsert;
 
 /// 指数日频历史行情数据-新浪
 ///
 /// clickhouse数据模型
 #[derive(Debug, Serialize, Deserialize, Row)]
-pub struct StockZhIndexDaily {
+pub struct StockZhIndexDailyInsert {
     /// 指数代码
     pub code: String,
     /// 开盘
@@ -29,12 +31,8 @@ pub struct StockZhIndexDaily {
     pub ts: DateTime<Utc>,
 }
 
-impl StockZhIndexDaily {
-    pub fn from_with_ts(
-        mut value: schema::akshare::StockZhIndexDaily,
-        code: &str,
-        ts: DateTime<Utc>,
-    ) -> Self {
+impl StockZhIndexDailyInsert {
+    pub fn from_with_ts(mut value: AkStockZhIndexDaily, code: &str, ts: DateTime<Utc>) -> Self {
         value.date.push('Z');
         let date = value
             .date
@@ -62,7 +60,7 @@ impl StockZhIndexDaily {
 ///
 /// 50ETF 期权波动率指数 QVIX; 又称中国版的恐慌指数
 #[derive(Debug, Deserialize, Serialize, Row)]
-pub struct IndexOption50EtfQvix {
+pub struct IndexOption50EtfQvixInsert {
     /// 开盘
     pub open: f64,
     /// 收盘
@@ -79,13 +77,8 @@ pub struct IndexOption50EtfQvix {
     pub ts: DateTime<Utc>,
 }
 
-pub use schema::akshare::IndexStockInfo;
-
-impl IndexOption50EtfQvix {
-    pub fn from_with_ts(
-        mut value: schema::akshare::IndexOption50EtfQvix,
-        ts: DateTime<Utc>,
-    ) -> Option<Self> {
+impl IndexOption50EtfQvixInsert {
+    pub fn from_with_ts(mut value: AkIndexOption50EtfQvix, ts: DateTime<Utc>) -> Option<Self> {
         if value.open.is_none()
             || value.close.is_none()
             || value.high.is_none()

@@ -3,8 +3,8 @@ use std::{sync::LazyLock, time::Duration};
 use backoff::ExponentialBackoff;
 use chrono::Utc;
 use data_mind::{
-    repository::{self, StockAdjustmentType},
-    schema,
+    repository::akshare::{StockAdjustmentType, StockZhAHistInsert},
+    schema::akshare::AkStockZhAHist,
 };
 use reqwest::{Client, ClientBuilder};
 
@@ -30,8 +30,8 @@ fn with_base_url(path: &str) -> String {
     format!("{}{}", AK_TOOLS_BASE_URL, path)
 }
 
-async fn test_retry_api_data() -> anyhow::Result<Vec<schema::akshare::StockZhAHist>> {
-    async fn test_get_api_data() -> anyhow::Result<Vec<schema::akshare::StockZhAHist>> {
+async fn test_retry_api_data() -> anyhow::Result<Vec<AkStockZhAHist>> {
+    async fn test_get_api_data() -> anyhow::Result<Vec<AkStockZhAHist>> {
         let res = TEST_HTTP_CLIENT
             .get(with_base_url("/stock_zh_a_hist"))
             .query(&[
@@ -46,7 +46,7 @@ async fn test_retry_api_data() -> anyhow::Result<Vec<schema::akshare::StockZhAHi
             .text()
             .await?;
 
-        let value: Vec<schema::akshare::StockZhAHist> = serde_json::from_str(&res).unwrap();
+        let value: Vec<AkStockZhAHist> = serde_json::from_str(&res).unwrap();
         Ok(value)
     }
 
@@ -70,8 +70,8 @@ async fn test_insert_stock_zh_a_hist() {
     let now = Utc::now();
     let rows = api_data
         .into_iter()
-        .map(|value| repository::StockZhAHist::from_with_type(value, adj_type, now))
-        .collect::<Vec<repository::StockZhAHist>>();
+        .map(|value| StockZhAHistInsert::from_with_type(value, adj_type, now))
+        .collect::<Vec<StockZhAHistInsert>>();
 
     let mut inserter = TEST_CH_CLIENT.inserter("stock_zh_a_hist").unwrap();
     for row in rows {

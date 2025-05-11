@@ -1,8 +1,9 @@
 use std::{fs::File, io::Write, sync::LazyLock, time::Duration};
 
-use data_mind::{
-    repository::IndexStockInfo,
-    schema::{self, akshare::StockFinancialAbstractThs},
+use data_mind::schema::akshare::{
+    AkIndexStockInfo, AkStockFinancialAbstractThs, AkStockNewsEm, AkStockRankCxdThs,
+    AkStockRankCxflThs, AkStockRankCxgThs, AkStockRankCxslThs, AkStockRankLxszThs,
+    AkStockRankLxxdThs, AkStockZhAStEm,
 };
 use reqwest::{Client, ClientBuilder};
 use serde_json::Value;
@@ -26,7 +27,7 @@ async fn test_stock_financial_abstract_ths() {
     let indicators = ["按报告期", "按年度", "按单季度"];
 
     for indicator in indicators {
-        let res: Vec<StockFinancialAbstractThs> = TEST_HTTP_CLIENT
+        let res: Vec<AkStockFinancialAbstractThs> = TEST_HTTP_CLIENT
             .get(with_base_url("/stock_financial_abstract_ths"))
             .query(&[("symbol", "000063"), ("indicator", indicator)])
             .send()
@@ -74,7 +75,7 @@ async fn test_stock_rank_cxg_ths() {
     let symbols = ["创月新高", "半年新高", "一年新高", "历史新高"];
 
     for symbol in symbols {
-        let res: Vec<schema::akshare::StockRankCxgThs> = TEST_HTTP_CLIENT
+        let res: Vec<AkStockRankCxgThs> = TEST_HTTP_CLIENT
             .get(with_base_url("/stock_rank_cxg_ths"))
             .query(&[("symbol", symbol)])
             .send()
@@ -99,7 +100,7 @@ async fn test_stock_rank_cxd_ths() {
     let symbols = ["创月新低", "半年新低", "一年新低", "历史新低"];
 
     for symbol in symbols {
-        let res: Vec<schema::akshare::StockRankCxdThs> = TEST_HTTP_CLIENT
+        let res: Vec<AkStockRankCxdThs> = TEST_HTTP_CLIENT
             .get(with_base_url("/stock_rank_cxd_ths"))
             .query(&[("symbol", symbol)])
             .send()
@@ -121,7 +122,7 @@ async fn test_stock_rank_cxd_ths() {
 
 #[actix_web::test]
 async fn test_stock_rank_lxsz_ths() {
-    let res: Vec<schema::akshare::StockRankLxszThs> = TEST_HTTP_CLIENT
+    let res: Vec<AkStockRankLxszThs> = TEST_HTTP_CLIENT
         .get(with_base_url("/stock_rank_lxsz_ths"))
         .send()
         .await
@@ -141,7 +142,7 @@ async fn test_stock_rank_lxsz_ths() {
 
 #[actix_web::test]
 async fn test_stock_rank_lxxd_ths() {
-    let res: Vec<schema::akshare::StockRankLxxdThs> = TEST_HTTP_CLIENT
+    let res: Vec<AkStockRankLxxdThs> = TEST_HTTP_CLIENT
         .get(with_base_url("/stock_rank_lxxd_ths"))
         .send()
         .await
@@ -161,7 +162,7 @@ async fn test_stock_rank_lxxd_ths() {
 
 #[actix_web::test]
 async fn test_stock_rank_cxfl_ths() {
-    let res: Vec<schema::akshare::StockRankCxflThs> = TEST_HTTP_CLIENT
+    let res: Vec<AkStockRankCxflThs> = TEST_HTTP_CLIENT
         .get(with_base_url("/stock_rank_cxfl_ths"))
         .send()
         .await
@@ -181,7 +182,7 @@ async fn test_stock_rank_cxfl_ths() {
 
 #[actix_web::test]
 async fn test_stock_rank_cxsl_ths() {
-    let res: Vec<schema::akshare::StockRankCxslThs> = TEST_HTTP_CLIENT
+    let res: Vec<AkStockRankCxslThs> = TEST_HTTP_CLIENT
         .get(with_base_url("/stock_rank_cxsl_ths"))
         .send()
         .await
@@ -201,7 +202,7 @@ async fn test_stock_rank_cxsl_ths() {
 
 #[actix_web::test]
 async fn test_stock_news_em() {
-    let res: Vec<schema::akshare::StockNewsEm> = TEST_HTTP_CLIENT
+    let res: Vec<AkStockNewsEm> = TEST_HTTP_CLIENT
         .get(with_base_url("/stock_news_em"))
         .query(&[("symbol", "300059")])
         .send()
@@ -222,9 +223,11 @@ async fn test_stock_news_em() {
 async fn test_stock_individual_info_em() {
     let res: Vec<Value> = TEST_HTTP_CLIENT
         .get(with_base_url("/stock_individual_info_em"))
-        .query(&[("symbol", "603777")])
+        .query(&[("symbol", "60377")])
         .send()
         .await
+        .unwrap()
+        .error_for_status()
         .unwrap()
         .json()
         .await
@@ -240,7 +243,7 @@ async fn test_stock_individual_info_em() {
 /// 风险警示版
 #[actix_web::test]
 async fn test_stock_zh_a_st_em() {
-    let res: Vec<schema::akshare::StockZhAStEm> = TEST_HTTP_CLIENT
+    let res: Vec<AkStockZhAStEm> = TEST_HTTP_CLIENT
         .get(with_base_url("/stock_zh_a_st_em"))
         .send()
         .await
@@ -259,7 +262,7 @@ async fn test_stock_zh_a_st_em() {
 /// 获取指数信息
 #[actix_web::test]
 async fn test_index_stock_info() {
-    let res: Vec<IndexStockInfo> = TEST_HTTP_CLIENT
+    let res: Vec<AkIndexStockInfo> = TEST_HTTP_CLIENT
         .get(with_base_url("/index_stock_info"))
         .send()
         .await
