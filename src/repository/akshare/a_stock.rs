@@ -8,7 +8,10 @@ use strum::EnumIter;
 use utoipa::ToSchema;
 
 use crate::{
-    schema::{self, akshare::a_stock},
+    schema::{
+        self,
+        akshare::{a_stock, AkStockHsgtHistEm, AkStockNewsMainCx, AkStockZhAHist, AkStockZtPoolEm},
+    },
     utils::splite_date_naive,
 };
 
@@ -209,7 +212,7 @@ impl StockAdjustmentType {
 ///
 /// clickhouse数据模型
 #[derive(Debug, Deserialize, Serialize, Row)]
-pub struct StockZhAHist {
+pub struct StockZhAHistInsert {
     /// 复权方式枚举，choice of ['不复权', '复权前', '复权后']
     pub adj_type: StockAdjustmentType,
     /// 股票代码
@@ -242,9 +245,9 @@ pub struct StockZhAHist {
     pub ts: DateTime<Utc>,
 }
 
-impl StockZhAHist {
+impl StockZhAHistInsert {
     pub fn from_with_type(
-        value: schema::akshare::StockZhAHist,
+        value: AkStockZhAHist,
         adj_type: StockAdjustmentType,
         ts: DateTime<Utc>,
     ) -> Self {
@@ -297,7 +300,7 @@ impl FlowDirection {
 /// 东方财富网-数据中心-资金流向-沪深港通资金流向-沪深港通历史数据，  
 /// 分为南向北向
 #[derive(Debug, Serialize, Deserialize, Row)]
-pub struct StockHsgtHistEm {
+pub struct StockHsgtHistEmInsert {
     /// 资金流动方向
     pub flow_dir: FlowDirection,
     /// 买入成交额，单位：亿元
@@ -332,9 +335,9 @@ pub struct StockHsgtHistEm {
     pub ts: DateTime<Utc>,
 }
 
-impl StockHsgtHistEm {
+impl StockHsgtHistEmInsert {
     pub fn from_with_dir_ts(
-        mut value: schema::akshare::StockHsgtHistEm,
+        mut value: AkStockHsgtHistEm,
         flow_dir: FlowDirection,
         ts: DateTime<Utc>,
     ) -> Self {
@@ -369,7 +372,7 @@ impl StockHsgtHistEm {
 // --------------------------------------------------------------------------
 
 #[derive(Debug, Serialize, Deserialize, Row)]
-pub struct StockZtPoolEm {
+pub struct StockZtPoolEmInsert {
     /// 股票代码
     pub code: String,
     /// 股票名称
@@ -410,12 +413,8 @@ pub struct StockZtPoolEm {
     pub ts: DateTime<Utc>,
 }
 
-impl StockZtPoolEm {
-    pub fn from_with_time(
-        value: schema::akshare::StockZtPoolEm,
-        date: NaiveDate,
-        ts: DateTime<Utc>,
-    ) -> Self {
+impl StockZtPoolEmInsert {
+    pub fn from_with_time(value: AkStockZtPoolEm, date: NaiveDate, ts: DateTime<Utc>) -> Self {
         Self {
             code: value.code,
             name: value.name,
@@ -442,9 +441,9 @@ impl StockZtPoolEm {
 // --------------------------------------------------------------------------
 
 // 重导出，其clickhouse schema和json schema实际上是完全一样的
-pub use schema::akshare::StockRankLxszThs;
+pub use schema::akshare::AkStockRankLxszThs as StockRankLxszThsInsert;
 
-impl schema::akshare::StockRankLxszThs {
+impl StockRankLxszThsInsert {
     pub async fn fetch_with_min_rising_days(
         ch_client: &clickhouse::Client,
         min_rising_days: i32,
@@ -471,7 +470,7 @@ impl schema::akshare::StockRankLxszThs {
 /// 描述: 财新网-财新数据通-内容精选  
 /// 限量: 返回所有历史新闻数据
 #[derive(Debug, Serialize, Deserialize, Row)]
-pub struct StockNewsMainCx {
+pub struct StockNewsMainCxInsert {
     /// 新闻被精选、推送或整理到内容库的时间。格式通常是 yyyy-MM-dd HH:mm。
     // #[serde(with = "clickhouse::serde::chrono::datetime")]
     pub interval_time: String,
@@ -489,8 +488,8 @@ pub struct StockNewsMainCx {
     pub ts: DateTime<Utc>,
 }
 
-impl StockNewsMainCx {
-    pub fn from_with_ts(mut value: schema::akshare::StockNewsMainCx, ts: DateTime<Utc>) -> Self {
+impl StockNewsMainCxInsert {
+    pub fn from_with_ts(mut value: AkStockNewsMainCx, ts: DateTime<Utc>) -> Self {
         value.pub_time.push_str(" +08:00");
 
         let pub_time = DateTime::parse_from_str(&value.pub_time, "%Y-%m-%d %H:%M:%S%.3f %z")
@@ -508,273 +507,9 @@ impl StockNewsMainCx {
     }
 }
 
-/// 移动平均线数据(MA5/MA10/MA20)
-#[derive(Debug, Serialize, Deserialize, Row)]
-pub struct MALinesRepo {
-    /// 数据点日期
-    #[serde(with = "clickhouse::serde::chrono::date")]
-    pub date: NaiveDate,
-    /// 数据点日期对应的MA5值
-    pub ma5: Option<f64>,
-    /// 数据点日期对应的MA10值
-    pub ma10: Option<f64>,
-    /// 数据点日期对应的MA20值
-    pub ma20: Option<f64>,
-}
-
-impl MALinesRepo {
-    /// 获取对应`stock_id`从当日开始倒推`limit_days`之中每天对应的5日平均线、
-    /// 10日平均线、20日平均线的数据。
-    pub async fn fetch_with_limit(
-        ch_client: &clickhouse::Client,
-        stock_id: &str,
-        limit_days: u32,
-    ) -> anyhow::Result<Vec<Self>> {
-        let data = ch_client
-            .query(
-                r#"
-SELECT
-    date,
-    ma5,
-    ma10,
-    ma20
-FROM (
-    SELECT
-        date,
-        CASE
-            WHEN count() OVER (
-                PARTITION BY code
-                ORDER BY date ASC
-                ROWS BETWEEN 4 PRECEDING AND CURRENT ROW
-            ) = 5
-            THEN round(avg(argMax(close, ts)) OVER (
-                PARTITION BY code
-                ORDER BY date ASC
-                ROWS BETWEEN 4 PRECEDING AND CURRENT ROW
-            ), 2)
-            ELSE NULL
-        END AS ma5,
-
-        CASE
-            WHEN count() OVER (
-                PARTITION BY code
-                ORDER BY date ASC
-                ROWS BETWEEN 9 PRECEDING AND CURRENT ROW
-            ) = 10
-            THEN round(avg(argMax(close, ts)) OVER (
-                PARTITION BY code
-                ORDER BY date ASC
-                ROWS BETWEEN 9 PRECEDING AND CURRENT ROW
-            ), 2)
-            ELSE NULL
-        END AS ma10,
-
-        CASE
-            WHEN count() OVER (
-                PARTITION BY code
-                ORDER BY date ASC
-                ROWS BETWEEN 19 PRECEDING AND CURRENT ROW
-            ) = 20
-            THEN round(avg(argMax(close, ts)) OVER (
-                PARTITION BY code
-                ORDER BY date ASC
-                ROWS BETWEEN 19 PRECEDING AND CURRENT ROW
-            ), 2)
-            ELSE NULL
-        END AS ma20
-    FROM stock_zh_a_hist
-    WHERE adj_type = 0
-        AND code = ?
-    GROUP BY code, date
-    ORDER BY date DESC
-    LIMIT ?
-) AS sub
-ORDER BY date ASC
-        "#,
-            )
-            .bind(stock_id)
-            .bind(limit_days)
-            .fetch_all()
-            .await?;
-        Ok(data)
-    }
-}
-
-/// 日频K线数据
-#[derive(Debug, Serialize, Deserialize, Row)]
-pub struct DailyKlineRepo {
-    /// 数据日期
-    #[serde(with = "clickhouse::serde::chrono::date")]
-    pub date: NaiveDate,
-    /// 开盘价
-    pub open: f64,
-    /// 收盘价
-    pub close: f64,
-    /// 最高价
-    pub high: f64,
-    /// 最低价
-    pub low: f64,
-}
-
-impl DailyKlineRepo {
-    pub async fn fetch_with_limit(
-        ch_client: &clickhouse::Client,
-        adj_type: StockAdjustmentType,
-        stock_id: &str,
-        limit_days: u32,
-    ) -> anyhow::Result<Vec<Self>> {
-        let data = ch_client
-            .query(
-                r#"
-SELECT
-    date,
-    open,
-    close,
-    high,
-    low
-FROM (
-    SELECT
-        date,
-        argMax(open, ts) as open,
-        argMax(close, ts) as close,
-        argMax(high, ts) as high,
-        argMax(low, ts) as low
-    FROM stock_zh_a_hist
-    WHERE adj_type = ?
-        AND code = ?
-    GROUP BY code, date
-    ORDER BY date DESC
-    LIMIT ?
-) AS sub
-ORDER BY date ASC 
-        "#,
-            )
-            .bind(adj_type)
-            .bind(stock_id)
-            .bind(limit_days)
-            .fetch_all()
-            .await?;
-
-        Ok(data)
-    }
-}
-
-/// 日频成交量数据
-#[derive(Debug, Serialize, Deserialize, Row)]
-pub struct DailyTradingVolumeRepo {
-    /// 数据日期
-    #[serde(with = "clickhouse::serde::chrono::date")]
-    pub date: NaiveDate,
-    /// 交易量(手)
-    pub trading_volume: f64,
-}
-
-impl DailyTradingVolumeRepo {
-    pub async fn fetch_with_limit(
-        ch_client: &clickhouse::Client,
-        adj_type: StockAdjustmentType,
-        stock_id: &str,
-        limit_days: u32,
-    ) -> anyhow::Result<Vec<Self>> {
-        let data = ch_client
-            .query(
-                r#"
-SELECT
-    date,
-    trading_volume
-FROM (
-    SELECT
-        date,
-        argMax(trading_volume, ts) as trading_volume
-    FROM stock_zh_a_hist
-    WHERE adj_type = ?
-        AND code = ?
-    GROUP BY code, date
-    ORDER BY date DESC
-    LIMIT ?
-) AS sub
-ORDER BY date ASC 
-    "#,
-            )
-            .bind(adj_type)
-            .bind(stock_id)
-            .bind(limit_days)
-            .fetch_all()
-            .await?;
-
-        Ok(data)
-    }
-}
-
-/// 日频其它指标数据
-#[derive(Debug, Serialize, Deserialize, Row)]
-pub struct DailyIndicatorRepo {
-    /// 数据日期
-    #[serde(with = "clickhouse::serde::chrono::date")]
-    pub date: NaiveDate,
-    /// 成交额,注意单位(元)
-    pub trading_value: f64,
-    /// 振幅(%)
-    pub amplitude: f64,
-    /// 换手率(%)
-    pub turnover_rate: f64,
-    /// 涨跌幅(%)
-    pub change_percent: f64,
-    /// 涨跌额,注意单位(元)
-    pub change_amount: f64,
-}
-
-impl DailyIndicatorRepo {
-    pub async fn fetch_with_limit(
-        ch_client: &clickhouse::Client,
-        adj_type: StockAdjustmentType,
-        stock_id: &str,
-        limit_days: u32,
-    ) -> anyhow::Result<Vec<Self>> {
-        let data = ch_client
-            .query(
-                r#"
-SELECT
-    date,
-    trading_value,
-    amplitude,
-    turnover_rate,
-    change_percentage,
-    change_amount
-FROM (
-    SELECT
-        date,
-        argMax(trading_value, ts) as trading_value,
-        argMax(amplitude, ts) as amplitude,
-        argMax(turnover_rate, ts) as turnover_rate,
-        argMax(change_percentage, ts) as change_percentage,
-        argMax(change_amount, ts) as change_amount
-    FROM stock_zh_a_hist
-    WHERE adj_type = ?
-        AND code = ?
-    GROUP BY code, date
-    ORDER BY date DESC
-    LIMIT ?
-) AS sub
-ORDER BY date ASC 
-        "#,
-            )
-            .bind(adj_type)
-            .bind(stock_id)
-            .bind(limit_days)
-            .fetch_all()
-            .await?;
-        Ok(data)
-    }
-}
-
 #[cfg(test)]
 mod test {
     use chrono::{DateTime, Utc};
-
-    use crate::utils::TEST_CH_CLIENT;
-
-    use super::*;
 
     #[test]
     fn test_parse_time_from_str() {
@@ -789,48 +524,6 @@ mod test {
         let utc_time: DateTime<Utc> = pub_time.with_timezone(&Utc);
         println!("interval_time = {pub_time:?}, utc time = {utc_time:?}");
     }
-
-    #[tokio::test]
-    async fn test_fetch_ma_with_limit() {
-        let data = MALinesRepo::fetch_with_limit(&TEST_CH_CLIENT, "603777", 90)
-            .await
-            .unwrap();
-
-        println!("{}", serde_json::to_string_pretty(&data).unwrap())
-    }
-
-    #[tokio::test]
-    async fn test_fetch_daily_stock_infos() {
-        let data = DailyKlineRepo::fetch_with_limit(
-            &TEST_CH_CLIENT,
-            StockAdjustmentType::Backward,
-            "603777",
-            30,
-        )
-        .await
-        .unwrap();
-        println!("{:?}\n", data);
-
-        let data = DailyTradingVolumeRepo::fetch_with_limit(
-            &TEST_CH_CLIENT,
-            StockAdjustmentType::Backward,
-            "603777",
-            30,
-        )
-        .await
-        .unwrap();
-        println!("{:?}\n", data);
-
-        let data = DailyIndicatorRepo::fetch_with_limit(
-            &TEST_CH_CLIENT,
-            StockAdjustmentType::Backward,
-            "603777",
-            30,
-        )
-        .await
-        .unwrap();
-        println!("{:?}\n", data);
-    }
 }
 
 #[cfg(test)]
@@ -841,7 +534,7 @@ mod test_stock_rank_lxsz_ths {
 
     #[tokio::test]
     async fn fetch_with_min_rising_days() {
-        let data = StockRankLxszThs::fetch_with_min_rising_days(&TEST_CH_CLIENT, 9)
+        let data = StockRankLxszThsInsert::fetch_with_min_rising_days(&TEST_CH_CLIENT, 9)
             .await
             .unwrap();
         println!("data = {:#?}", data);

@@ -1,5 +1,5 @@
 use backoff::ExponentialBackoff;
-use data_mind::schema;
+use data_mind::schema::akshare::AkStockZhIndexSpotSina;
 use reqwest::{Client, ClientBuilder};
 use serde_json::Value;
 use std::{env, fs::File, io::Write, sync::LazyLock, time::Duration};
@@ -124,7 +124,7 @@ async fn test_stock_zh_index_spot_sina() {
         .await
         .unwrap();
 
-    let values: Vec<schema::akshare::StockZhIndexSpotSina> = serde_json::from_str(&res).unwrap();
+    let values: Vec<AkStockZhIndexSpotSina> = serde_json::from_str(&res).unwrap();
     println!("res len = {}", values.len());
 
     let mut file = File::create("../tmp/实时行情数据-新浪.json").unwrap();

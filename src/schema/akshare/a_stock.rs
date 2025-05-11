@@ -84,7 +84,7 @@ pub struct RealtimeStockMarketRecord {
 ///
 /// akshare api数据模型
 #[derive(Debug, Deserialize)]
-pub struct StockZhAHist {
+pub struct AkStockZhAHist {
     /// 开盘价
     #[serde(rename(deserialize = "开盘"))]
     pub open: f64,
@@ -128,7 +128,7 @@ pub struct StockZhAHist {
 /// 目标地址: https://data.eastmoney.com/hsgt/index.html  
 /// 描述: 东方财富网-数据中心-资金流向-沪深港通资金流向-沪深港通历史数据
 #[derive(Debug, Deserialize)]
-pub struct StockHsgtHistEm {
+pub struct AkStockHsgtHistEm {
     /// 买入成交额，单位：亿元
     #[serde(rename(deserialize = "买入成交额"))]
     pub buy_amount: Option<f64>,
@@ -172,7 +172,7 @@ pub struct StockHsgtHistEm {
 
 /// 股票信息结构体
 #[derive(Debug, Serialize, Deserialize)]
-pub struct StockZtPoolEm {
+pub struct AkStockZtPoolEm {
     /// 股票代码
     #[serde(rename(deserialize = "代码"))]
     pub code: String,
@@ -228,7 +228,7 @@ pub struct StockZtPoolEm {
 /// 描述: 东方财富指定个股的新闻资讯数据  
 /// 限量: 指定 symbol(股票id) 当日最近 100 条新闻资讯数据
 #[derive(Debug, Deserialize, Serialize, ToSchema)]
-pub struct StockNewsEm {
+pub struct AkStockNewsEm {
     /// 关键词，例如股票代码（如 "300059"）
     #[serde(rename(deserialize = "关键词"))]
     pub keyword: String,
@@ -249,7 +249,7 @@ pub struct StockNewsEm {
     pub url: String,
 }
 
-impl StockNewsEm {
+impl AkStockNewsEm {
     /// 从astock数据接口获取相关数据
     pub async fn from_astock_api(
         reqwest_client: &reqwest::Client,
@@ -272,7 +272,7 @@ impl StockNewsEm {
 /// 描述: 财新网-财新数据通-内容精选  
 /// 限量: 返回所有历史新闻数据
 #[derive(Debug, Deserialize)]
-pub struct StockNewsMainCx {
+pub struct AkStockNewsMainCx {
     /// 新闻被精选、推送或整理到内容库的时间。格式通常是 yyyy-MM-dd HH:mm。
     pub interval_time: String,
     /// 新闻的正式发布时间，即新闻内容原文在财新网等发布的时间。格式是完整的 yyyy-MM-dd HH:mm:ss.sss。
@@ -290,7 +290,7 @@ pub struct StockNewsMainCx {
 /// 描述: 同花顺-财务指标-主要指标  
 /// 限量: 单次获取指定 symbol 的所有数据  
 #[derive(Debug, Deserialize, Serialize, ToSchema)]
-pub struct StockFinancialAbstractThs {
+pub struct AkStockFinancialAbstractThs {
     /// 报告期
     #[serde(deserialize_with = "always_string", rename(deserialize = "报告期"))]
     pub report_date: String,
@@ -476,7 +476,7 @@ where
     Ok(s)
 }
 
-impl StockFinancialAbstractThs {
+impl AkStockFinancialAbstractThs {
     /// 从aktool之中获取数据：  
     /// - symbol="000063"; 股票代码
     /// - indicator example = "按报告期"; choice of {"按报告期", "按年度", "按单季度"}
@@ -503,7 +503,7 @@ impl StockFinancialAbstractThs {
 /// 描述：同花顺-数据中心-技术选股-创新高  
 /// 限量：单次指定 symbol 的所有数据
 #[derive(Debug, Deserialize, Serialize, ToSchema)]
-pub struct StockRankCxgThs {
+pub struct AkStockRankCxgThs {
     /// 前期高点
     #[serde(rename(deserialize = "前期高点"))]
     pub previous_high: f64,
@@ -530,7 +530,7 @@ pub struct StockRankCxgThs {
     pub stock_name: String,
 }
 
-impl StockRankCxgThs {
+impl AkStockRankCxgThs {
     /// 从akshare之中获取数据  
     /// symbol example = "创月新高"; choice of {"创月新高", "半年新高", "一年新高", "历史新高"}
     pub async fn from_astock_api(
@@ -555,7 +555,7 @@ impl StockRankCxgThs {
 /// 描述：同花顺-数据中心-技术选股-创新低  
 /// 限量：单次指定 symbol 的所有数据
 #[derive(Debug, Deserialize, Serialize, ToSchema)]
-pub struct StockRankCxdThs {
+pub struct AkStockRankCxdThs {
     /// 前期低点价格
     #[serde(rename(deserialize = "前期低点"))]
     pub previous_low: f64,
@@ -582,7 +582,7 @@ pub struct StockRankCxdThs {
     pub stock_name: String,
 }
 
-impl StockRankCxdThs {
+impl AkStockRankCxdThs {
     /// 从akshare获取数据  
     /// symbol example="创月新低"; choice of {"创月新低", "半年新低", "一年新低", "历史新低"}
     pub async fn from_astock_api(
@@ -607,7 +607,7 @@ impl StockRankCxdThs {
 /// 描述：同花顺-数据中心-技术选股-连续上涨  
 /// 限量：单次返回所有数据
 #[derive(Debug, Deserialize, Serialize, ToSchema, Row)]
-pub struct StockRankLxszThs {
+pub struct AkStockRankLxszThs {
     /// 序号
     #[serde(rename(deserialize = "序号"))]
     pub index: i32,
@@ -640,7 +640,7 @@ pub struct StockRankLxszThs {
     pub consecutive_change_percentage: f64,
 }
 
-impl StockRankLxszThs {
+impl AkStockRankLxszThs {
     /// 从akshare获取对应的一组数据
     pub async fn from_astock_api(reqwest_client: &reqwest::Client) -> anyhow::Result<Vec<Self>> {
         let res: Vec<Self> = reqwest_client
@@ -660,7 +660,7 @@ impl StockRankLxszThs {
 /// 描述：同花顺-数据中心-技术选股-连续下跌  
 /// 限量：单次返回所有数据
 #[derive(Debug, Deserialize, Serialize, ToSchema)]
-pub struct StockRankLxxdThs {
+pub struct AkStockRankLxxdThs {
     /// 序号
     #[serde(rename(deserialize = "序号"))]
     pub index: i32,
@@ -693,7 +693,7 @@ pub struct StockRankLxxdThs {
     pub consecutive_change_percentage: f64,
 }
 
-impl StockRankLxxdThs {
+impl AkStockRankLxxdThs {
     /// 从akshare获取对应的一组数据
     pub async fn from_astock_api(reqwest_client: &reqwest::Client) -> anyhow::Result<Vec<Self>> {
         let res: Vec<Self> = reqwest_client
@@ -713,7 +713,7 @@ impl StockRankLxxdThs {
 /// 描述: 同花顺-数据中心-技术选股-持续放量  
 /// 限量: 单次返回所有数据
 #[derive(Debug, Deserialize, Serialize, ToSchema)]
-pub struct StockRankCxflThs {
+pub struct AkStockRankCxflThs {
     /// 基准日成交量，格式示例："371.17万(04月18日)" (股)
     #[serde(rename(deserialize = "基准日成交量"))]
     pub base_day_volume: String,
@@ -746,7 +746,7 @@ pub struct StockRankCxflThs {
     pub stage_change_percentage: f64,
 }
 
-impl StockRankCxflThs {
+impl AkStockRankCxflThs {
     /// 从akshare获取到对应的数据
     pub async fn from_astock_api(reqwest_client: &reqwest::Client) -> anyhow::Result<Vec<Self>> {
         let res: Vec<Self> = reqwest_client
@@ -766,7 +766,7 @@ impl StockRankCxflThs {
 /// 描述: 同花顺-数据中心-技术选股-持续缩量
 /// 限量: 单次返回所有数据
 #[derive(Debug, Deserialize, Serialize, ToSchema)]
-pub struct StockRankCxslThs {
+pub struct AkStockRankCxslThs {
     /// 基准日成交量，格式示例："371.17万(04月18日)" (股)
     #[serde(rename(deserialize = "基准日成交量"))]
     pub base_day_volume: String,
@@ -799,7 +799,7 @@ pub struct StockRankCxslThs {
     pub stage_change_percentage: f64,
 }
 
-impl StockRankCxslThs {
+impl AkStockRankCxslThs {
     pub async fn from_astock_api(reqwest_client: &reqwest::Client) -> anyhow::Result<Vec<Self>> {
         let res: Vec<Self> = reqwest_client
             .get(with_base_url("/stock_rank_cxsl_ths"))
@@ -817,7 +817,7 @@ impl StockRankCxslThs {
 /// 描述: 东方财富-个股-股票信息  
 /// 限量: 单次返回指定 symbol 的个股信息
 #[derive(Debug, Serialize, Deserialize, ToSchema)]
-pub struct StockIndividualInfoEm {
+pub struct AkStockIndividualInfoEm {
     /// 最新价(元)
     #[serde(rename(deserialize = "最新"))]
     pub latest_price: f64,
@@ -847,7 +847,7 @@ pub struct StockIndividualInfoEm {
     pub listing_date: i64,
 }
 
-impl StockIndividualInfoEm {
+impl AkStockIndividualInfoEm {
     pub async fn from_astock_api(
         reqwest_client: &reqwest::Client,
         stock_code: &str,
@@ -886,7 +886,7 @@ impl StockIndividualInfoEm {
 /// 描述: 东方财富网-行情中心-沪深个股-风险警示板  
 /// 限量: 单次返回当前交易日风险警示板的所有股票的行情数据
 #[derive(Debug, Serialize, Deserialize, ToSchema)]
-pub struct StockZhAStEm {
+pub struct AkStockZhAStEm {
     /// 序号
     #[serde(rename(deserialize = "序号"))]
     pub index: i64,
@@ -940,7 +940,7 @@ pub struct StockZhAStEm {
     pub pb_ratio: f64,
 }
 
-impl StockZhAStEm {
+impl AkStockZhAStEm {
     pub async fn from_astock_api(reqwest_client: &reqwest::Client) -> anyhow::Result<Vec<Self>> {
         let data: Vec<Self> = reqwest_client
             .get(with_base_url("/stock_zh_a_st_em"))
@@ -1017,7 +1017,7 @@ mod test {
 
     #[tokio::test]
     async fn test_stock_individual_info_em() {
-        let data = StockIndividualInfoEm::from_astock_api(&TEST_HTTP_CLIENT, "603777")
+        let data = AkStockIndividualInfoEm::from_astock_api(&TEST_HTTP_CLIENT, "603777")
             .await
             .unwrap();
         println!("{:#?}", data);

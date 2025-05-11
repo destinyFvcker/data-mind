@@ -4,13 +4,15 @@ use chrono::NaiveDate;
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 
-use crate::repository::{DailyIndicatorRepo, DailyKlineRepo, DailyTradingVolumeRepo, MALinesRepo};
+use crate::repository::service::{
+    DailyIndicatorFetch, DailyKlineFetch, DailyTradingVolumeFetch, MALinesFetch,
+};
 
-pub use crate::schema::akshare::StockIndividualInfoEm;
+pub use crate::schema::akshare::AkStockIndividualInfoEm as ServStockIndividualInfoEm;
 
 /// 移动平均线数据(MA5/MA10/MA20)
 #[derive(Debug, Serialize, Deserialize, ToSchema)]
-pub struct MALines {
+pub struct ServMALines {
     /// 数据点日期，格式为YYYY-MM-DD
     #[schema(example = "2025-05-08")]
     pub date: NaiveDate,
@@ -25,8 +27,8 @@ pub struct MALines {
     pub ma20: Option<f64>,
 }
 
-impl From<MALinesRepo> for MALines {
-    fn from(value: MALinesRepo) -> Self {
+impl From<MALinesFetch> for ServMALines {
+    fn from(value: MALinesFetch) -> Self {
         Self {
             date: value.date,
             ma5: value.ma5,
@@ -38,7 +40,7 @@ impl From<MALinesRepo> for MALines {
 
 /// 日频K线数据
 #[derive(Debug, Serialize, Deserialize, ToSchema)]
-pub struct DailyKline {
+pub struct ServDailyKline {
     /// 数据日期，格式为YYYY-MM-DD
     pub date: NaiveDate,
     /// 开盘价(元)
@@ -51,8 +53,8 @@ pub struct DailyKline {
     pub low: f64,
 }
 
-impl From<DailyKlineRepo> for DailyKline {
-    fn from(value: DailyKlineRepo) -> Self {
+impl From<DailyKlineFetch> for ServDailyKline {
+    fn from(value: DailyKlineFetch) -> Self {
         Self {
             date: value.date,
             open: value.open,
@@ -64,15 +66,15 @@ impl From<DailyKlineRepo> for DailyKline {
 }
 
 #[derive(Debug, Serialize, Deserialize, ToSchema)]
-pub struct DailyTradingVolume {
+pub struct ServDailyTradingVolume {
     /// 数据日期，格式为YYYY-MM-DD
     pub date: NaiveDate,
     /// 交易量(手)
     pub trading_volume: f64,
 }
 
-impl From<DailyTradingVolumeRepo> for DailyTradingVolume {
-    fn from(value: DailyTradingVolumeRepo) -> Self {
+impl From<DailyTradingVolumeFetch> for ServDailyTradingVolume {
+    fn from(value: DailyTradingVolumeFetch) -> Self {
         Self {
             date: value.date,
             trading_volume: value.trading_volume,
@@ -82,7 +84,7 @@ impl From<DailyTradingVolumeRepo> for DailyTradingVolume {
 
 /// 日频其它指标数据
 #[derive(Debug, Serialize, Deserialize, ToSchema)]
-pub struct DailyIndicator {
+pub struct ServDailyIndicator {
     /// 数据日期，格式为YYYY-MM-DD
     pub date: NaiveDate,
     /// 成交额,注意单位(元)
@@ -97,8 +99,8 @@ pub struct DailyIndicator {
     pub change_amount: f64,
 }
 
-impl From<DailyIndicatorRepo> for DailyIndicator {
-    fn from(value: DailyIndicatorRepo) -> Self {
+impl From<DailyIndicatorFetch> for ServDailyIndicator {
+    fn from(value: DailyIndicatorFetch) -> Self {
         Self {
             date: value.date,
             trading_value: value.trading_value,
@@ -118,7 +120,7 @@ mod test {
 
     #[tokio::test]
     async fn test_fetch_malines() {
-        let data: Vec<MALines> = MALinesRepo::fetch_with_limit(&TEST_CH_CLIENT, "603777", 90)
+        let data: Vec<ServMALines> = MALinesFetch::fetch_with_limit(&TEST_CH_CLIENT, "603777", 90)
             .await
             .unwrap()
             .into_iter()

@@ -1,7 +1,12 @@
 use chrono::Utc;
 use data_mind::{
-    repository::{self, IndexStockInfo},
-    schema,
+    repository::akshare::{
+        self, IndexOption50EtfQvixInsert, IndexStockInfoInsert, StockZhIndexDailyInsert,
+    },
+    schema::{
+        self,
+        akshare::{AkIndexOption50EtfQvix, AkStockZhIndexDaily, AkStockZhIndexSpotSina},
+    },
     utils::{config_backoff, with_base_url},
 };
 use futures::{StreamExt, TryStreamExt, stream};
@@ -53,7 +58,7 @@ pub struct StockZhIndexDailyMonitor {
 impl StockZhIndexDailyMonitor {
     /// 获取所有指数数据代码
     async fn get_codes(&self) -> anyhow::Result<Vec<String>> {
-        let values: Vec<schema::akshare::StockZhIndexSpotSina> = self
+        let values: Vec<AkStockZhIndexSpotSina> = self
             .ext_res
             .http_client
             .get(&self.codes_url)
@@ -67,13 +72,10 @@ impl StockZhIndexDailyMonitor {
     }
 
     /// 获取单个code对应的指数的日频历史行情数据
-    async fn get_daily_hist(
-        &self,
-        code: String,
-    ) -> anyhow::Result<Vec<repository::StockZhIndexDaily>> {
+    async fn get_daily_hist(&self, code: String) -> anyhow::Result<Vec<StockZhIndexDailyInsert>> {
         let backoff_s = config_backoff(5, 30);
         let api_data = backoff::future::retry(backoff_s, || async {
-            let api_data: Vec<schema::akshare::StockZhIndexDaily> = self
+            let api_data: Vec<AkStockZhIndexDaily> = self
                 .ext_res
                 .http_client
                 .get(&self.data_url)
@@ -92,7 +94,7 @@ impl StockZhIndexDailyMonitor {
 
         Ok(api_data
             .into_iter()
-            .map(|data| repository::StockZhIndexDaily::from_with_ts(data, &code, now))
+            .map(|data| StockZhIndexDailyInsert::from_with_ts(data, &code, now))
             .collect())
     }
 
@@ -100,8 +102,8 @@ impl StockZhIndexDailyMonitor {
     async fn get_daily_hists(
         &self,
         codes: Vec<String>,
-    ) -> anyhow::Result<Vec<repository::StockZhIndexDaily>> {
-        let res: Vec<Vec<repository::StockZhIndexDaily>> = stream::iter(codes)
+    ) -> anyhow::Result<Vec<StockZhIndexDailyInsert>> {
+        let res: Vec<Vec<StockZhIndexDailyInsert>> = stream::iter(codes)
             .map(|code| self.get_daily_hist(code))
             .buffer_unordered(50)
             .try_collect()
@@ -133,10 +135,10 @@ pub struct IndexOption50EtfQvixMonitor {
 }
 
 impl IndexOption50EtfQvixMonitor {
-    async fn get_data(&self) -> anyhow::Result<Vec<Option<repository::IndexOption50EtfQvix>>> {
+    async fn get_data(&self) -> anyhow::Result<Vec<Option<IndexOption50EtfQvixInsert>>> {
         let backoff_s = config_backoff(5, 30);
         let api_data = backoff::future::retry(backoff_s, || async {
-            let api_data: Vec<schema::akshare::IndexOption50EtfQvix> = self
+            let api_data: Vec<AkIndexOption50EtfQvix> = self
                 .ext_res
                 .http_client
                 .get(&self.data_url)
@@ -153,7 +155,7 @@ impl IndexOption50EtfQvixMonitor {
         let now = Utc::now();
         let repo_data = api_data
             .into_iter()
-            .map(|data| repository::IndexOption50EtfQvix::from_with_ts(data, now))
+            .map(|data| IndexOption50EtfQvixInsert::from_with_ts(data, now))
             .collect::<Vec<_>>();
 
         Ok(repo_data)
@@ -184,7 +186,7 @@ pub struct IndexStockInfoMonitor {
 
 impl IndexStockInfoMonitor {
     pub async fn collect_data(&self) -> anyhow::Result<()> {
-        let rows = IndexStockInfo::from_astock_api(&self.ext_res.http_client).await?;
+        let rows = IndexStockInfoInsert::from_astock_api(&self.ext_res.http_client).await?;
 
         // 首先删除当前表格之中的所有数据
         let sql = format!("TRUNCATE TABLE {}", self.data_table);

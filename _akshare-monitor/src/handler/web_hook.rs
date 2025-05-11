@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use data_mind::{
-    repository::AlarmHist,
+    repository::service::AlarmHist,
     schema::service::webhook::{AlertStatus, GrafanaWebhookMsg},
 };
 use poem::{
