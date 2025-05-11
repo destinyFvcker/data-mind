@@ -1,6 +1,9 @@
 use std::{fs::File, io::Write, sync::LazyLock, time::Duration};
 
-use data_mind::schema::{self, akshare::StockFinancialAbstractThs};
+use data_mind::{
+    repository::IndexStockInfo,
+    schema::{self, akshare::StockFinancialAbstractThs},
+};
 use reqwest::{Client, ClientBuilder};
 use serde_json::Value;
 
@@ -230,6 +233,46 @@ async fn test_stock_individual_info_em() {
     println!("res len = {}", res.len());
 
     let mut file = File::create("../tmp/个股信息查询.json").unwrap();
+    file.write_all(serde_json::to_string_pretty(&res).unwrap().as_bytes())
+        .unwrap();
+}
+
+/// 风险警示版
+#[actix_web::test]
+async fn test_stock_zh_a_st_em() {
+    let res: Vec<schema::akshare::StockZhAStEm> = TEST_HTTP_CLIENT
+        .get(with_base_url("/stock_zh_a_st_em"))
+        .send()
+        .await
+        .unwrap()
+        .json()
+        .await
+        .unwrap();
+
+    println!("res len = {}", res.len());
+
+    let mut file = File::create("../tmp/风险警示版.json").unwrap();
+    file.write_all(serde_json::to_string_pretty(&res).unwrap().as_bytes())
+        .unwrap();
+}
+
+/// 获取指数信息
+#[actix_web::test]
+async fn test_index_stock_info() {
+    let res: Vec<IndexStockInfo> = TEST_HTTP_CLIENT
+        .get(with_base_url("/index_stock_info"))
+        .send()
+        .await
+        .unwrap()
+        .error_for_status()
+        .unwrap()
+        .json()
+        .await
+        .unwrap();
+
+    println!("res len = {}", res.len());
+
+    let mut file = File::create("../tmp/指数基本信息.json").unwrap();
     file.write_all(serde_json::to_string_pretty(&res).unwrap().as_bytes())
         .unwrap();
 }

@@ -79,6 +79,8 @@ pub struct IndexOption50EtfQvix {
     pub ts: DateTime<Utc>,
 }
 
+pub use schema::akshare::IndexStockInfo;
+
 impl IndexOption50EtfQvix {
     pub fn from_with_ts(
         mut value: schema::akshare::IndexOption50EtfQvix,

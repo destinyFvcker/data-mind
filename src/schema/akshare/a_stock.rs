@@ -437,6 +437,45 @@ pub struct StockFinancialAbstractThs {
     pub debt_asset_ratio: Option<String>,
 }
 
+// 通用的转换函数：false/null → None，其他有效值 → Some(对应类型)
+fn false_or_null_as_none<'de, D, T>(deserializer: D) -> Result<Option<T>, D::Error>
+where
+    D: Deserializer<'de>,
+    T: Deserialize<'de>,
+{
+    let value = Value::deserialize(deserializer)?;
+    match value {
+        Value::Null => Ok(None),
+        Value::Bool(false) => Ok(None),
+        Value::Bool(true) => Err(serde::de::Error::custom("unexpected true")),
+        other => {
+            let t = T::deserialize(other)
+                .map(Some)
+                .map_err(serde::de::Error::custom)?; // 手动映射错误！
+            Ok(t)
+        }
+    }
+}
+
+fn always_string<'de, D>(deserializer: D) -> Result<String, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let value = Value::deserialize(deserializer)?;
+    let s = match value {
+        Value::Null => String::new(),          // null → 空字符串
+        Value::Bool(b) => b.to_string(),       // true/false → "true"/"false"
+        Value::Number(num) => num.to_string(), // 数字 → "数字字符串"
+        Value::String(s) => s,                 // 本来就是字符串
+        Value::Array(_) | Value::Object(_) => {
+            return Err(serde::de::Error::custom(
+                "expected primitive, got complex type",
+            ))
+        }
+    };
+    Ok(s)
+}
+
 impl StockFinancialAbstractThs {
     /// 从aktool之中获取数据：  
     /// - symbol="000063"; 股票代码
@@ -842,43 +881,77 @@ impl StockIndividualInfoEm {
     }
 }
 
-// 通用的转换函数：false/null → None，其他有效值 → Some(对应类型)
-fn false_or_null_as_none<'de, D, T>(deserializer: D) -> Result<Option<T>, D::Error>
-where
-    D: Deserializer<'de>,
-    T: Deserialize<'de>,
-{
-    let value = Value::deserialize(deserializer)?;
-    match value {
-        Value::Null => Ok(None),
-        Value::Bool(false) => Ok(None),
-        Value::Bool(true) => Err(serde::de::Error::custom("unexpected true")),
-        other => {
-            let t = T::deserialize(other)
-                .map(Some)
-                .map_err(serde::de::Error::custom)?; // 手动映射错误！
-            Ok(t)
-        }
-    }
+/// 风险警示版 - 接口: stock_zh_a_st_em  
+/// 目标地址: https://quote.eastmoney.com/center/gridlist.html#st_board  
+/// 描述: 东方财富网-行情中心-沪深个股-风险警示板  
+/// 限量: 单次返回当前交易日风险警示板的所有股票的行情数据
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
+pub struct StockZhAStEm {
+    /// 序号
+    #[serde(rename(deserialize = "序号"))]
+    pub index: i64,
+    /// 股票代码
+    #[serde(rename(deserialize = "代码"))]
+    pub code: String,
+    /// 股票名称
+    #[serde(rename(deserialize = "名称"))]
+    pub name: String,
+    /// 最新价
+    #[serde(rename(deserialize = "最新价"))]
+    pub latest_price: Option<f64>,
+    /// 涨跌幅 (单位: %)
+    #[serde(rename(deserialize = "涨跌幅"))]
+    pub change_percent: Option<f64>,
+    /// 涨跌额
+    #[serde(rename(deserialize = "涨跌额"))]
+    pub change_amount: Option<f64>,
+    /// 成交量
+    #[serde(rename(deserialize = "成交量"))]
+    pub trading_volume: Option<f64>,
+    /// 成交额
+    #[serde(rename(deserialize = "成交额"))]
+    pub trading_value: Option<f64>,
+    /// 振幅 (单位: %)
+    #[serde(rename(deserialize = "振幅"))]
+    pub amplitude: Option<f64>,
+    /// 最高价
+    #[serde(rename(deserialize = "最高"))]
+    pub highest_price: Option<f64>,
+    /// 最低价
+    #[serde(rename(deserialize = "最低"))]
+    pub lowest_price: Option<f64>,
+    /// 今日开盘价
+    #[serde(rename(deserialize = "今开"))]
+    pub open_price: Option<f64>,
+    /// 昨日收盘价
+    #[serde(rename(deserialize = "昨收"))]
+    pub previous_close_price: f64,
+    /// 量比
+    #[serde(rename(deserialize = "量比"))]
+    pub volume_ratio: Option<f64>,
+    /// 换手率 (单位: %)
+    #[serde(rename(deserialize = "换手率"))]
+    pub turnover_rate: f64,
+    /// 市盈率-动态
+    #[serde(rename(deserialize = "市盈率-动态"))]
+    pub pe_ratio: f64,
+    /// 市净率
+    #[serde(rename(deserialize = "市净率"))]
+    pub pb_ratio: f64,
 }
 
-fn always_string<'de, D>(deserializer: D) -> Result<String, D::Error>
-where
-    D: Deserializer<'de>,
-{
-    let value = Value::deserialize(deserializer)?;
-    let s = match value {
-        Value::Null => String::new(),          // null → 空字符串
-        Value::Bool(b) => b.to_string(),       // true/false → "true"/"false"
-        Value::Number(num) => num.to_string(), // 数字 → "数字字符串"
-        Value::String(s) => s,                 // 本来就是字符串
-        Value::Array(_) | Value::Object(_) => {
-            return Err(serde::de::Error::custom(
-                "expected primitive, got complex type",
-            ))
-        }
-    };
-    Ok(s)
+impl StockZhAStEm {
+    pub async fn from_astock_api(reqwest_client: &reqwest::Client) -> anyhow::Result<Vec<Self>> {
+        let data: Vec<Self> = reqwest_client
+            .get(with_base_url("/stock_zh_a_st_em"))
+            .send()
+            .await?
+            .error_for_status()?
+            .json()
+            .await?;
+
+        Ok(data)
+    }
 }
 
 #[cfg(test)]
