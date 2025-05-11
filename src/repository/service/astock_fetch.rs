@@ -1,20 +1,25 @@
 use chrono::NaiveDate;
 use clickhouse::Row;
 use serde::{Deserialize, Serialize};
+use utoipa::ToSchema;
 
 use crate::repository::akshare::StockAdjustmentType;
 
 /// 移动平均线数据(MA5/MA10/MA20)
-#[derive(Debug, Serialize, Deserialize, Row)]
+#[derive(Debug, Serialize, Deserialize, Row, ToSchema)]
 pub struct MALinesFetch {
-    /// 数据点日期
-    #[serde(with = "clickhouse::serde::chrono::date")]
+    /// 数据点日期，格式为YYYY-MM-DD
+    #[schema(example = "2025-05-08")]
+    #[serde(deserialize_with = "clickhouse::serde::chrono::date::deserialize")]
     pub date: NaiveDate,
-    /// 数据点日期对应的MA5值
+    /// 数据点日期对应的MA5值，注意单位(元)
+    #[schema(example = 13.29)]
     pub ma5: Option<f64>,
-    /// 数据点日期对应的MA10值
+    /// 数据点日期对应的MA10值。注意单位(元)
+    #[schema(example = 13.481)]
     pub ma10: Option<f64>,
-    /// 数据点日期对应的MA20值
+    /// 数据点日期对应的MA20值，注意单位(元)
+    #[schema(example = 13.8955)]
     pub ma20: Option<f64>,
 }
 
@@ -97,18 +102,18 @@ ORDER BY date ASC
 }
 
 /// 日频K线数据
-#[derive(Debug, Serialize, Deserialize, Row)]
+#[derive(Debug, Serialize, Deserialize, Row, ToSchema)]
 pub struct DailyKlineFetch {
-    /// 数据日期
-    #[serde(with = "clickhouse::serde::chrono::date")]
+    /// 数据日期，格式为YYYY-MM-DD
+    #[serde(deserialize_with = "clickhouse::serde::chrono::date::deserialize")]
     pub date: NaiveDate,
-    /// 开盘价
+    /// 开盘价(元)
     pub open: f64,
-    /// 收盘价
+    /// 收盘价(元)
     pub close: f64,
-    /// 最高价
+    /// 最高价(元)
     pub high: f64,
-    /// 最低价
+    /// 最低价(元)
     pub low: f64,
 }
 
@@ -156,10 +161,10 @@ ORDER BY date ASC
 }
 
 /// 日频成交量数据
-#[derive(Debug, Serialize, Deserialize, Row)]
+#[derive(Debug, Serialize, Deserialize, Row, ToSchema)]
 pub struct DailyTradingVolumeFetch {
-    /// 数据日期
-    #[serde(with = "clickhouse::serde::chrono::date")]
+    /// 数据日期，格式为YYYY-MM-DD
+    #[serde(deserialize_with = "clickhouse::serde::chrono::date::deserialize")]
     pub date: NaiveDate,
     /// 交易量(手)
     pub trading_volume: f64,
@@ -203,10 +208,10 @@ ORDER BY date ASC
 }
 
 /// 日频其它指标数据
-#[derive(Debug, Serialize, Deserialize, Row)]
+#[derive(Debug, Serialize, Deserialize, Row, ToSchema)]
 pub struct DailyIndicatorFetch {
-    /// 数据日期
-    #[serde(with = "clickhouse::serde::chrono::date")]
+    /// 数据日期，格式为YYYY-MM-DD
+    #[serde(deserialize_with = "clickhouse::serde::chrono::date::deserialize")]
     pub date: NaiveDate,
     /// 成交额,注意单位(元)
     pub trading_value: f64,
