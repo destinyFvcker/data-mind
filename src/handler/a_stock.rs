@@ -13,8 +13,11 @@ use crate::{
         DailyIndicatorRepo, DailyKlineRepo, DailyTradingVolumeRepo, MALinesRepo,
         StockAdjustmentType,
     },
-    schema::service::a_stock::{
-        DailyIndicator, DailyKline, DailyTradingVolume, MALines, StockIndividualInfoEm,
+    schema::{
+        akshare::StockZhAStEm,
+        service::a_stock::{
+            DailyIndicator, DailyKline, DailyTradingVolume, MALines, StockIndividualInfoEm,
+        },
     },
 };
 
@@ -187,5 +190,22 @@ async fn fetch_daily_indicator(
     .into_iter()
     .map(From::from)
     .collect();
+    Ok(Json(data))
+}
+
+/// 单次返回当前交易日风险警示版的所有股票的行情数据
+#[utoipa::path(
+    tag = API_TAG,
+    responses(
+        (status = 200, description = "成功获取当前交易日风险警示版的所有股票的行情数据", body = Vec<StockZhAStEm>)
+    )
+)]
+#[get("/stock_zh_a_st")]
+async fn fetch_stock_zh_a_st(
+    reqwest_client: Data<reqwest::Client>,
+) -> actix_web::Result<Json<Vec<StockZhAStEm>>> {
+    let data = StockZhAStEm::from_astock_api(&reqwest_client)
+        .await
+        .map_err(|err| actix_web::error::ErrorInternalServerError(err))?;
     Ok(Json(data))
 }

@@ -1,6 +1,10 @@
 //! akshare 指数数据
 
-use serde::Deserialize;
+use clickhouse::Row;
+use serde::{Deserialize, Serialize};
+use utoipa::ToSchema;
+
+use crate::utils::with_base_url;
 
 /// 实时行情数据-新浪
 ///
@@ -76,4 +80,28 @@ pub struct IndexOption50EtfQvix {
     pub low: Option<f64>,
     /// 最低
     pub close: Option<f64>,
+}
+
+/// 股票指数信息一览表表项
+#[derive(Debug, Deserialize, Serialize, ToSchema, Row)]
+pub struct IndexStockInfo {
+    /// 指数名称
+    display_name: String,
+    /// 指数代码
+    index_code: String,
+    // 指数发布日期,格式为%Y/%m/%d
+    publish_date: String,
+}
+
+impl IndexStockInfo {
+    pub async fn from_astock_api(reqwest_client: &reqwest::Client) -> anyhow::Result<Vec<Self>> {
+        let data: Vec<Self> = reqwest_client
+            .get(with_base_url("/index_stock_info"))
+            .send()
+            .await?
+            .error_for_status()?
+            .json()
+            .await?;
+        Ok(data)
+    }
 }

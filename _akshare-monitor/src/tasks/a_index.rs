@@ -1,6 +1,7 @@
 use chrono::Utc;
 use data_mind::{
-    repository, schema,
+    repository::{self, IndexStockInfo},
+    schema,
     utils::{config_backoff, with_base_url},
 };
 use futures::{StreamExt, TryStreamExt, stream};
@@ -25,6 +26,15 @@ pub async fn start_a_index_tasks(ext_res: ExternalResource) {
     };
     SCHEDULE_TASK_MANAGER
         .add_task(index_option_50etf_qvix)
+        .await;
+
+    let index_stock_info_monitor = IndexStockInfoMonitor {
+        data_url: with_base_url("/index_stock_info"),
+        data_table: "index_stock_info".to_owned(),
+        ext_res: ext_res.clone(),
+    };
+    SCHEDULE_TASK_MANAGER
+        .add_task(index_stock_info_monitor)
         .await;
 }
 
@@ -162,6 +172,29 @@ impl IndexOption50EtfQvixMonitor {
         }
         inserter.end().await?;
 
+        Ok(())
+    }
+}
+
+pub struct IndexStockInfoMonitor {
+    data_url: String,
+    data_table: String,
+    ext_res: ExternalResource,
+}
+
+impl IndexStockInfoMonitor {
+    pub async fn collect_data(&self) -> anyhow::Result<()> {
+        let rows = IndexStockInfo::from_astock_api(&self.ext_res.http_client).await?;
+
+        // 首先删除当前表格之中的所有数据
+        let sql = format!("TRUNCATE TABLE {}", self.data_table);
+        self.ext_res.ch_client.query(&sql).execute().await?;
+
+        let mut inserter = self.ext_res.ch_client.inserter(&self.data_table)?;
+        for row in rows {
+            inserter.write(&row)?;
+        }
+        inserter.end().await?;
         Ok(())
     }
 }

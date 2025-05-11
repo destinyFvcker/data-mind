@@ -27,3 +27,13 @@ CREATE TABLE IF NOT EXISTS index_option_50etf_qvix
 )
 ENGINE = ReplacingMergeTree(ts)
 ORDER BY date;
+
+-- 指数基本信息表
+CREATE TABLE IF NOT EXISTS index_stock_info
+(
+    `display_name` String,
+    `index_code` String,
+    `publish_date` String
+)
+ENGINE = MergeTree
+ORDER BY index_code;
