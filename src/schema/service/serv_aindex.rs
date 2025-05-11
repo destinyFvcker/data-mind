@@ -83,6 +83,7 @@ ORDER BY date ASC
     }
 }
 
+#[derive(Debug, Deserialize, Serialize, Row, ToSchema)]
 pub struct StockZhIndexDaily {
     pub code: String,
     pub open: String,

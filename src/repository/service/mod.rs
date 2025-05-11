@@ -1,7 +1,7 @@
-mod a_index;
-mod a_stock;
+mod aindex_fetch;
 mod alarm_hist;
+mod astock_fetch;
 
-pub use a_index::*;
-pub use a_stock::*;
+pub use aindex_fetch::*;
 pub use alarm_hist::*;
+pub use astock_fetch::*;

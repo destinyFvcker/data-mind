@@ -10,7 +10,9 @@ use utoipa::ToSchema;
 use crate::{
     schema::{
         self,
-        akshare::{a_stock, AkStockHsgtHistEm, AkStockNewsMainCx, AkStockZhAHist, AkStockZtPoolEm},
+        akshare::{
+            ak_astock, AkStockHsgtHistEm, AkStockNewsMainCx, AkStockZhAHist, AkStockZtPoolEm,
+        },
     },
     utils::splite_date_naive,
 };
@@ -45,7 +47,7 @@ impl TradingStatus {
     }
 
     /// 判断股票是否停牌
-    pub fn determine_status(data: &a_stock::RealtimeStockMarketRecord) -> Self {
+    pub fn determine_status(data: &ak_astock::RealtimeStockMarketRecord) -> Self {
         // 如果最新价为None，可能表示停牌
         if data.latest_price.is_none() {
             return TradingStatus::Suspended;
@@ -123,7 +125,7 @@ pub struct RealtimeStockMarketRecord {
 
 impl RealtimeStockMarketRecord {
     pub fn from_with_ts(
-        source: a_stock::RealtimeStockMarketRecord,
+        source: ak_astock::RealtimeStockMarketRecord,
         timestamp: DateTime<Utc>,
     ) -> Self {
         // 确定交易状态
