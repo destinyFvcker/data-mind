@@ -279,3 +279,24 @@ async fn test_index_stock_info() {
     file.write_all(serde_json::to_string_pretty(&res).unwrap().as_bytes())
         .unwrap();
 }
+
+#[actix_web::test]
+async fn test_index_stock_cons() {
+    let res: Vec<Value> = TEST_HTTP_CLIENT
+        .get(with_base_url("/index_stock_cons"))
+        .query(&[("symbol", "000300")])
+        .send()
+        .await
+        .unwrap()
+        .error_for_status()
+        .unwrap()
+        .json()
+        .await
+        .unwrap();
+
+    println!("res len = {}", res.len());
+
+    let mut file = File::create("../tmp/指数成分股信息.json").unwrap();
+    file.write_all(serde_json::to_string_pretty(&res).unwrap().as_bytes())
+        .unwrap();
+}
