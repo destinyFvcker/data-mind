@@ -38,6 +38,16 @@ pub fn with_base_url(path: &str) -> String {
     format!("{}{}", AK_TOOLS_BASE_URL, path)
 }
 
+/// 用于clickhouse的limit语句，小于0时返回`u64::MAX`,
+/// 表示请求所有数据
+pub fn limit_or_not(limit: i32) -> u64 {
+    if limit < 0 {
+        u64::MAX
+    } else {
+        limit as u64
+    }
+}
+
 /// 获取一个比较合理的指数退避重拾策略
 #[inline]
 pub fn config_backoff(max_interval: u64, max_elapsed_time: u64) -> ExponentialBackoff {

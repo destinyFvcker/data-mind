@@ -1,5 +1,6 @@
 use data_mind::handler::{
-    a_stock::mount_astock_scope, indicator::mount_tech_indicator_scope, news::mount_news_scope,
+    a_index::mount_aindex_scope, a_stock::mount_astock_scope,
+    indicator::mount_tech_indicator_scope, news::mount_news_scope,
 };
 use utoipa_actix_web::service_config::ServiceConfig;
 
@@ -9,5 +10,6 @@ pub fn config() -> impl FnOnce(&mut ServiceConfig) {
         mount_tech_indicator_scope(config);
         mount_news_scope(config);
         mount_astock_scope(config);
+        mount_aindex_scope(config);
     }
 }

@@ -13,7 +13,7 @@ CREATE TABLE IF NOT EXISTS stock_zh_index_daily
     `ts` DateTime64(3, 'Asia/Shanghai') -- 数据收集时间
 )
 ENGINE = ReplacingMergeTree(ts)
-ORDER BY (date, code);
+ORDER BY (code, date);
 
 -- 50ETF 期权波动率指数 QVIX; 又称中国版的恐慌指数
 CREATE TABLE IF NOT EXISTS index_option_50etf_qvix
