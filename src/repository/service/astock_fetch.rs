@@ -331,7 +331,7 @@ mod test {
 
     #[tokio::test]
     async fn test_is_exist() {
-        assert!(is_stock_code_exists(&TEST_CH_CLIENT, "000722")
+        assert!(is_stock_code_exists(&TEST_CH_CLIENT, "000063")
             .await
             .unwrap());
         assert!(!is_stock_code_exists(&TEST_CH_CLIENT, "0w-1").await.unwrap());
