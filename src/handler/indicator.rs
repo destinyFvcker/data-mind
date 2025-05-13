@@ -8,7 +8,7 @@ use crate::{
             AkStockRankCxslThs, AkStockRankLxszThs, AkStockRankLxxdThs,
         },
         common::OkRes,
-        error::{InternalServerSnafu, NotFoundSnafu, OrdinError},
+        error::{BadReqSnafu, InternalServerSnafu, NotFoundSnafu, OrdinError},
     },
 };
 use actix_web::{
@@ -55,15 +55,21 @@ async fn stock_financial_abstract_ths(
     ch_client: Data<clickhouse::Client>,
 ) -> Result<Json<OkRes<Vec<AkStockFinancialAbstractThs>>>, OrdinError> {
     let (symbol_id, indicator) = symbol_id.into_inner();
-    let is_stock_exist = is_stock_code_exists(&ch_client, &symbol_id)
+    is_stock_code_exists(&ch_client, &symbol_id)
         .await
-        .context(InternalServerSnafu)?;
-    let is_indicator_exist =
-        indicator == "按报告期" || indicator == "按年度" || indicator == "按单季度";
-
-    (is_stock_exist && is_indicator_exist)
+        .context(InternalServerSnafu)?
         .then_some(())
         .ok_or(NotFoundSnafu.build())?;
+
+    (indicator == "按报告期" || indicator == "按年度" || indicator == "按单季度")
+        .then_some(())
+        .ok_or(
+            BadReqSnafu {
+                desc: "时间范围指示器参数indicator选择范围为{'按报告期', '按年度', '按单季度'}"
+                    .to_owned(),
+            }
+            .build(),
+        )?;
 
     let data =
         AkStockFinancialAbstractThs::from_astock_api(&reqwest_client, &symbol_id, &indicator)
@@ -95,6 +101,16 @@ async fn stock_rank_cxg_ths(
     reqwest_client: Data<reqwest::Client>,
 ) -> Result<Json<OkRes<Vec<AkStockRankCxgThs>>>, OrdinError> {
     let time_range = time_range.into_inner();
+    (time_range == "创月新高" || time_range == "半年新高" || time_range == "一年新高" ||  time_range == "历史新高")
+        .then_some(())
+        .ok_or(
+            BadReqSnafu {
+                desc: "时间范围指示器参数time_range选择范围为 {'创月新高', '半年新高', '一年新高', '历史新高'}"
+                    .to_owned(),
+            }
+            .build(),
+        )?;
+
     let data = AkStockRankCxgThs::from_astock_api(&reqwest_client, &time_range)
         .await
         .context(InternalServerSnafu)?;
@@ -124,6 +140,16 @@ async fn stock_rank_cxd_ths(
     reqwest_client: Data<reqwest::Client>,
 ) -> Result<Json<OkRes<Vec<AkStockRankCxdThs>>>, OrdinError> {
     let time_range = time_range.into_inner();
+    (time_range == "创月新低" || time_range == "半年新低" || time_range == "一年新低" ||  time_range == "历史新低")
+        .then_some(())
+        .ok_or(
+            BadReqSnafu {
+                desc: "时间范围指示器参数time_range选择范围为 {'创月新低', '半年新低', '一年新低', '历史新低'}"
+                    .to_owned(),
+            }
+            .build(),
+        )?;
+
     let data = AkStockRankCxdThs::from_astock_api(&reqwest_client, &time_range)
         .await
         .context(InternalServerSnafu)?;

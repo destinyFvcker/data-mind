@@ -22,6 +22,9 @@ pub enum Error {
     // not found error
     #[snafu(display("The corresponding resource to be accessed does not exist."))]
     NotFound,
+    // bad request
+    #[snafu(display("Request param error!, related desc = {}", desc))]
+    BadReq { desc: String },
 }
 
 impl ErrorExt for Error {
@@ -32,6 +35,7 @@ impl ErrorExt for Error {
             Error::InternalServer { .. } => common_code::CommonCode::Internal,
             Error::UnAuth => common_code::CommonCode::PermissionDenied,
             Error::NotFound => common_code::CommonCode::NotExists,
+            Error::BadReq { .. } => common_code::CommonCode::InvalidArguments,
         }
     }
 
