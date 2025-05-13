@@ -1,8 +1,7 @@
 use common_error::{common_code::CommonCode, ext::ErrorExt};
 use common_macro::stack_trace_debug;
+use data_mind::schema::common::ErrRes;
 use snafu::{Location, Snafu};
-
-use crate::schema::common::ErrRes;
 
 #[derive(Snafu)]
 #[snafu(visibility(pub))]

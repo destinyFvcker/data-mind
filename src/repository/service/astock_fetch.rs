@@ -5,6 +5,18 @@ use utoipa::ToSchema;
 
 use crate::repository::akshare::StockAdjustmentType;
 
+/// 判断一个指定的stock code是否存在
+pub async fn is_stock_code_exists(
+    ch_client: &clickhouse::Client,
+    stock_code: &str,
+) -> anyhow::Result<bool> {
+    Ok(ch_client
+        .query("SELECT exists(SELECT 1 FROM stock_zh_a_hist WHERE code = ?) AS code_exists")
+        .bind(stock_code)
+        .fetch_one()
+        .await?)
+}
+
 /// 移动平均线数据(MA5/MA10/MA20)
 #[derive(Debug, Serialize, Deserialize, Row, ToSchema)]
 pub struct MALinesFetch {
@@ -315,5 +327,13 @@ mod test {
         .await
         .unwrap();
         println!("{:?}\n", data);
+    }
+
+    #[tokio::test]
+    async fn test_is_exist() {
+        assert!(is_stock_code_exists(&TEST_CH_CLIENT, "000722")
+            .await
+            .unwrap());
+        assert!(!is_stock_code_exists(&TEST_CH_CLIENT, "0w-1").await.unwrap());
     }
 }

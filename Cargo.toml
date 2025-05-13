@@ -83,4 +83,9 @@ uuid.workspace = true
 rskafka.workspace = true
 serde_bytes.workspace = true
 tokio.workspace = true
+ftlog.workspace = true
+mime.workspace = true
+snafu.workspace = true
 dm_proto = { path = "./dm-proto" }
+common_macro = { path = "./__common_macro" }
+common_error = { path = "./__common_error" }

@@ -5,14 +5,19 @@ use actix_web::{
     web::{self, Data, Json},
 };
 use serde::{Deserialize, Serialize};
+use snafu::ResultExt;
 use utoipa::IntoParams;
 use utoipa_actix_web::{scope, service_config::ServiceConfig};
 
 use crate::{
-    repository::akshare::StockAdjustmentType,
-    schema::service::serv_astock::{
-        ServDailyIndicator, ServDailyKline, ServDailyTradingVolume, ServMALines,
-        ServStockIndividualInfoEm, ServStockZhAStEm,
+    repository::{akshare::StockAdjustmentType, service::is_stock_code_exists},
+    schema::{
+        common::OkRes,
+        error::{InternalServerSnafu, NotFoundSnafu, OrdinError},
+        service::serv_astock::{
+            ServDailyIndicator, ServDailyKline, ServDailyTradingVolume, ServMALines,
+            ServStockIndividualInfoEm, ServStockZhAStEm,
+        },
     },
 };
 
@@ -38,19 +43,30 @@ pub fn mount_astock_scope(config: &mut ServiceConfig) {
     ),
     responses(
         (status = 200, description = "成功获取个股信息", body = ServStockIndividualInfoEm),
-        (status = 404, description = "对应个股信息不存在")
+        (status = 404, description = "对应个股信息不存在", body = OrdinError),
+        (status = 401, description = "没有访问权限", body = OrdinError),
+        (status = 500, description = "发生服务器内部错误", body = OrdinError),
     )
 )]
 #[get("/stock_individual_info/{stock_id}")]
 async fn fetch_stock_individual_info(
     stock_id: web::Path<String>,
     reqwest_client: Data<reqwest::Client>,
-) -> actix_web::Result<Json<ServStockIndividualInfoEm>> {
+    ch_client: Data<clickhouse::Client>,
+) -> Result<Json<OkRes<ServStockIndividualInfoEm>>, OrdinError> {
     let stock_id = stock_id.into_inner();
+    is_stock_code_exists(&ch_client, &stock_id)
+        .await
+        .context(InternalServerSnafu)?
+        .then_some(())
+        .ok_or(NotFoundSnafu.build())?;
+
     let data = ServStockIndividualInfoEm::from_astock_api(&reqwest_client, &stock_id)
         .await
-        .map_err(|err| actix_web::error::ErrorNotFound(err))?;
-    Ok(Json(data))
+        .context(InternalServerSnafu)?;
+
+    let res = OkRes::from_with_msg("成功获取个股信息".to_owned(), data);
+    Ok(Json(res))
 }
 
 #[derive(Debug, Deserialize, IntoParams)]
@@ -70,22 +86,33 @@ struct MAQuery {
         MAQuery
     ),
     responses(
-        (status = 200, description = "成功获取请求的股票Id对应的时间范围内的移动平均线数据", body = Vec<ServMALines>)
+        (status = 200, description = "成功获取请求的股票Id对应的时间范围内的移动平均线数据", body = OkRes<Vec<ServMALines>>),
+        (status = 404, description = "对应个股信息不存在", body = OrdinError),
+        (status = 401, description = "没有访问权限", body = OrdinError),
+        (status = 500, description = "发生服务器内部错误", body = OrdinError),
     )
 )]
 #[get("/ma_with_limit")]
 async fn fetch_mas_with_limit(
     ma_query: web::Query<MAQuery>,
     ch_client: web::Data<clickhouse::Client>,
-) -> actix_web::Result<Json<Vec<ServMALines>>> {
+) -> Result<Json<OkRes<Vec<ServMALines>>>, OrdinError> {
+    is_stock_code_exists(&ch_client, &ma_query.stock_id)
+        .await
+        .context(InternalServerSnafu)?
+        .then_some(())
+        .ok_or(NotFoundSnafu.build())?;
+
     let data: Vec<ServMALines> =
         ServMALines::fetch_with_limit(&ch_client, &ma_query.stock_id, ma_query.limit_days)
             .await
-            .map_err(|err| actix_web::error::ErrorInternalServerError(err))?
-            .into_iter()
-            .map(From::from)
-            .collect();
-    Ok(Json(data))
+            .context(InternalServerSnafu)?;
+
+    let res = OkRes::from_with_msg(
+        "成功获取请求的股票Id对应的时间范围内的移动平均线数据".to_owned(),
+        data,
+    );
+    Ok(Json(res))
 }
 
 #[derive(Debug, Deserialize, Serialize, IntoParams)]
@@ -108,14 +135,23 @@ struct DailyStockQuery {
         DailyStockQuery
     ),
     responses(
-        (status = 200, description = "获取对应时间范围的日频K线数据成功", body = Vec<ServDailyKline>)
+        (status = 200, description = "获取对应时间范围的日频K线数据成功", body = OkRes<Vec<ServDailyKline>>),
+        (status = 404, description = "对应个股信息不存在", body = OrdinError),
+        (status = 401, description = "没有访问权限", body = OrdinError),
+        (status = 500, description = "发生服务器内部错误", body = OrdinError),
     )
 )]
 #[get("/daily_kline")]
 async fn fetch_daily_kline(
     query: web::Query<DailyStockQuery>,
     ch_client: web::Data<clickhouse::Client>,
-) -> actix_web::Result<Json<Vec<ServDailyKline>>> {
+) -> Result<Json<OkRes<Vec<ServDailyKline>>>, OrdinError> {
+    is_stock_code_exists(&ch_client, &query.stock_id)
+        .await
+        .context(InternalServerSnafu)?
+        .then_some(())
+        .ok_or(NotFoundSnafu.build())?;
+
     let data: Vec<ServDailyKline> = ServDailyKline::fetch_with_limit(
         &ch_client,
         query.adj_type,
@@ -123,11 +159,10 @@ async fn fetch_daily_kline(
         query.limit_days,
     )
     .await
-    .map_err(|err| actix_web::error::ErrorInternalServerError(err))?
-    .into_iter()
-    .map(From::from)
-    .collect();
-    Ok(Json(data))
+    .context(InternalServerSnafu)?;
+
+    let res = OkRes::from_with_msg("获取对应时间范围的日频K线数据成功".to_owned(), data);
+    Ok(Json(res))
 }
 
 /// 获取对应`stock_id`的A股股票从今日开始倒推一定天数的日频交易量数据
@@ -137,14 +172,23 @@ async fn fetch_daily_kline(
         DailyStockQuery
     ),
     responses(
-        (status = 200, description = "获取对应时间范围的日频交易量数据成功", body = Vec<ServDailyTradingVolume>)
+        (status = 200, description = "获取对应时间范围的日频交易量数据成功", body = OkRes<Vec<ServDailyTradingVolume>>),
+        (status = 404, description = "对应个股信息不存在", body = OrdinError),
+        (status = 401, description = "没有访问权限", body = OrdinError),
+        (status = 500, description = "发生服务器内部错误", body = OrdinError),
     )
 )]
 #[get("/daily_trading_volume")]
 async fn fetch_daily_trading_volume(
     query: web::Query<DailyStockQuery>,
     ch_client: web::Data<clickhouse::Client>,
-) -> actix_web::Result<Json<Vec<ServDailyTradingVolume>>> {
+) -> Result<Json<OkRes<Vec<ServDailyTradingVolume>>>, OrdinError> {
+    is_stock_code_exists(&ch_client, &query.stock_id)
+        .await
+        .context(InternalServerSnafu)?
+        .then_some(())
+        .ok_or(NotFoundSnafu.build())?;
+
     let data: Vec<ServDailyTradingVolume> = ServDailyTradingVolume::fetch_with_limit(
         &ch_client,
         query.adj_type,
@@ -152,10 +196,10 @@ async fn fetch_daily_trading_volume(
         query.limit_days,
     )
     .await
-    .map_err(|err| actix_web::error::ErrorInternalServerError(err))?
-    .into_iter()
-    .collect();
-    Ok(Json(data))
+    .context(InternalServerSnafu)?;
+
+    let res = OkRes::from_with_msg("获取对应时间范围的日频交易量数据成功".to_owned(), data);
+    Ok(Json(res))
 }
 
 /// 获取对应`stock_id`的A股股票从今日开始倒推一定天数的日频交易指标数据
@@ -165,14 +209,23 @@ async fn fetch_daily_trading_volume(
         DailyStockQuery
     ),
     responses(
-        (status = 200, description = "获取对应时间范围的日频交易指标数据成功", body = Vec<ServDailyIndicator>)
+        (status = 200, description = "获取对应时间范围的日频交易指标数据成功", body = OkRes<Vec<ServDailyIndicator>>),
+        (status = 404, description = "对应个股信息不存在", body = OrdinError),
+        (status = 401, description = "没有访问权限", body = OrdinError),
+        (status = 500, description = "发生服务器内部错误", body = OrdinError),
     )
 )]
 #[get("/daily_indicator")]
 async fn fetch_daily_indicator(
     query: web::Query<DailyStockQuery>,
     ch_client: web::Data<clickhouse::Client>,
-) -> actix_web::Result<Json<Vec<ServDailyIndicator>>> {
+) -> Result<Json<OkRes<Vec<ServDailyIndicator>>>, OrdinError> {
+    is_stock_code_exists(&ch_client, &query.stock_id)
+        .await
+        .context(InternalServerSnafu)?
+        .then_some(())
+        .ok_or(NotFoundSnafu.build())?;
+
     let data: Vec<ServDailyIndicator> = ServDailyIndicator::fetch_with_limit(
         &ch_client,
         query.adj_type,
@@ -180,25 +233,32 @@ async fn fetch_daily_indicator(
         query.limit_days,
     )
     .await
-    .map_err(|err| actix_web::error::ErrorInternalServerError(err))?
-    .into_iter()
-    .collect();
-    Ok(Json(data))
+    .context(InternalServerSnafu)?;
+
+    let res = OkRes::from_with_msg("获取对应时间范围的日频交易指标数据成功".to_owned(), data);
+    Ok(Json(res))
 }
 
 /// 单次返回当前交易日风险警示版的所有股票的行情数据
 #[utoipa::path(
     tag = API_TAG,
     responses(
-        (status = 200, description = "成功获取当前交易日风险警示版的所有股票的行情数据", body = Vec<ServStockZhAStEm>)
+        (status = 200, description = "成功获取当前交易日风险警示版的所有股票的行情数据", body = OkRes<Vec<ServStockZhAStEm>>),
+        (status = 401, description = "没有访问权限", body = OrdinError),
+        (status = 500, description = "发生服务器内部错误", body = OrdinError),
     )
 )]
 #[get("/stock_zh_a_st")]
 async fn fetch_stock_zh_a_st(
     reqwest_client: Data<reqwest::Client>,
-) -> actix_web::Result<Json<Vec<ServStockZhAStEm>>> {
+) -> Result<Json<OkRes<Vec<ServStockZhAStEm>>>, OrdinError> {
     let data = ServStockZhAStEm::from_astock_api(&reqwest_client)
         .await
-        .map_err(|err| actix_web::error::ErrorInternalServerError(err))?;
-    Ok(Json(data))
+        .context(InternalServerSnafu)?;
+
+    let res = OkRes::from_with_msg(
+        "成功获取当前交易日风险警示版的所有股票的行情数据".to_owned(),
+        data,
+    );
+    Ok(Json(res))
 }
