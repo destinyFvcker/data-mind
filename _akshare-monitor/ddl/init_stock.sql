@@ -86,7 +86,7 @@ CREATE TABLE IF NOT EXISTS stock_zh_a_hist
     `ts` DateTime64(3, 'Asia/Shanghai')
 )
 ENGINE = ReplacingMergeTree
-ORDER BY (date, code, adj_type);
+ORDER BY (code, date, adj_type);
 
 -- 东方财富网-数据中心-资金流向-沪深港通资金流向-沪深港通历史数据
 CREATE TABLE IF NOT EXISTS stock_hsgt_hist_em

@@ -5,6 +5,18 @@ use utoipa::ToSchema;
 
 use crate::utils::limit_or_not;
 
+/// 判断一个指数代码是否存在
+pub async fn is_index_code_exists(
+    ch_client: &clickhouse::Client,
+    index_code: &str,
+) -> anyhow::Result<bool> {
+    Ok(ch_client
+        .query("SELECT exists(SELECT 1 FROM stock_zh_index_daily WHERE code = ?) AS code_exists")
+        .bind(index_code)
+        .fetch_one()
+        .await?)
+}
+
 /// 50ETF 期权波动率指数 QVIX; 又称中国版的恐慌指数 K线数据
 #[derive(Debug, Deserialize, Serialize, Row, ToSchema)]
 pub struct IndexOption50EtfQvixKlineFetch {
@@ -308,3 +320,20 @@ LIMIT ?, ?
 }
 
 // ---------------------------------------------------------------------------------
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    use crate::utils::TEST_CH_CLIENT;
+
+    #[tokio::test]
+    async fn test_is_exist() {
+        assert!(is_index_code_exists(&TEST_CH_CLIENT, "sz399282")
+            .await
+            .unwrap());
+        assert!(!is_index_code_exists(&TEST_CH_CLIENT, "399282")
+            .await
+            .unwrap());
+    }
+}

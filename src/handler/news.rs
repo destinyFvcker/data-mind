@@ -3,10 +3,18 @@ use actix_web::{
     web::{self, Data, Json},
 };
 use serde::Deserialize;
+use snafu::ResultExt;
 use utoipa::IntoParams;
 use utoipa_actix_web::{scope, service_config::ServiceConfig};
 
-use crate::schema::service::news::{AkStockNewsEm, StockNewsMainCx};
+use crate::{
+    repository::service::is_stock_code_exists,
+    schema::{
+        common::OkRes,
+        error::{InternalServerSnafu, NotFoundSnafu, OrdinError},
+        service::news::{AkStockNewsEm, StockNewsMainCx},
+    },
+};
 
 pub const API_TAG: &'static str = "A股金融新闻";
 pub const API_DESC: &'static str = "获取个股新闻以及精选新闻的接口集合";
@@ -41,17 +49,20 @@ struct NewsRangeQuery {
 #[utoipa::path(
     tag = API_TAG,
     responses(
-        (status = 200, description = "成功获取最近100条精选的财经信息", body = Vec<StockNewsMainCx>)
+        (status = 200, description = "成功获取最近100条精选的财经信息", body = OkRes<Vec<StockNewsMainCx>>),
+        (status = 401, description = "没有访问权限", body = OrdinError),
+        (status = 500, description = "发生服务器内部错误", body = OrdinError),
     )
 )]
 #[get("/chosen_rescent100")]
 async fn fetch_recent100_news_main_cx(
     ch_client: Data<clickhouse::Client>,
-) -> actix_web::Result<Json<Vec<StockNewsMainCx>>> {
+) -> Result<Json<OkRes<Vec<StockNewsMainCx>>>, OrdinError> {
     let data = StockNewsMainCx::fetch_recent100(&ch_client)
         .await
-        .map_err(|err| actix_web::error::ErrorInternalServerError(err))?;
-    Ok(Json(data))
+        .context(InternalServerSnafu)?;
+    let res = OkRes::from_with_msg("成功获取最近100条精选的财经信息".to_string(), data);
+    Ok(Json(res))
 }
 
 /// 获取指定stock的最近100条财经信息
@@ -61,19 +72,31 @@ async fn fetch_recent100_news_main_cx(
         ("symbol_id", description = "需要获取新闻信息对应的股票代码", example = "603777")
     ),
     responses(
-        (status = 200, description = "成功获取指定stock的最近100条财经信息", body = Vec<AkStockNewsEm>)
+        (status = 200, description = "成功获取指定stock的最近100条财经信息", body = OkRes<Vec<AkStockNewsEm>>),
+        (status = 404, description = "指定的股票代码不存在", body = OrdinError),
+        (status = 401, description = "没有访问权限", body = OrdinError),
+        (status = 500, description = "发生服务器内部错误", body = OrdinError),
     )
 )]
 #[get("/stock_recent100/{symbol_id}")]
 async fn fetch_recent100_news_em(
     symbol_id: web::Path<String>,
     reqwest_client: Data<reqwest::Client>,
-) -> actix_web::Result<Json<Vec<AkStockNewsEm>>> {
+    ch_client: Data<clickhouse::Client>,
+) -> Result<Json<OkRes<Vec<AkStockNewsEm>>>, OrdinError> {
     let symbol_id = symbol_id.into_inner();
+    is_stock_code_exists(&ch_client, &symbol_id)
+        .await
+        .context(InternalServerSnafu)?
+        .then_some(())
+        .ok_or(NotFoundSnafu.build())?;
+
     let news = AkStockNewsEm::from_astock_api(&reqwest_client, &symbol_id)
         .await
-        .map_err(|err| actix_web::error::ErrorInternalServerError(err))?;
-    Ok(Json(news))
+        .context(InternalServerSnafu)?;
+
+    let res = OkRes::from_with_msg("成功获取指定stock的最近100条财经信息".to_owned(), news);
+    Ok(Json(res))
 }
 
 /// 通过指定时间范围、偏移量和返回数据条数以请求部分精选财经新闻条目
@@ -83,14 +106,16 @@ async fn fetch_recent100_news_em(
         NewsRangeQuery
     ),
     responses(
-        (status = 200, description = "成功获取指定范围内的精选财经新闻条目", body = Vec<StockNewsMainCx>)
+        (status = 200, description = "成功获取指定范围内的精选财经新闻条目", body = OkRes<Vec<StockNewsMainCx>>),
+        (status = 401, description = "没有访问权限", body = OrdinError),
+        (status = 500, description = "发生服务器内部错误", body = OrdinError),
     )
 )]
 #[get("/chosen_with_range")]
 async fn fetch_news_main_cx_with_range(
     news_range: web::Query<NewsRangeQuery>,
     ch_client: Data<clickhouse::Client>,
-) -> actix_web::Result<Json<Vec<StockNewsMainCx>>> {
+) -> Result<Json<OkRes<Vec<StockNewsMainCx>>>, OrdinError> {
     let data = StockNewsMainCx::fetch_range(
         &ch_client,
         &news_range.start_time,
@@ -99,6 +124,8 @@ async fn fetch_news_main_cx_with_range(
         news_range.offset,
     )
     .await
-    .map_err(|err| actix_web::error::ErrorInternalServerError(err))?;
-    Ok(Json(data))
+    .context(InternalServerSnafu)?;
+
+    let res = OkRes::from_with_msg("成功获取指定范围内的精选财经新闻条目".to_owned(), data);
+    Ok(Json(res))
 }

@@ -37,6 +37,8 @@ pub enum CommonCode {
     IllegalState = 1006,
     /// Caused by some error originated from external system.
     External = 1007,
+    /// noraml doesn't exist
+    NotExists = 1008,
     // ====== End of common status code ================
 
     // ====== Begin of auth related status code =====
@@ -79,7 +81,8 @@ impl CommonCode {
             | CommonCode::AuthHeaderNotFound
             | CommonCode::InvalidAuthHeader
             | CommonCode::AccessDenied
-            | CommonCode::PermissionDenied => false,
+            | CommonCode::PermissionDenied
+            | CommonCode::NotExists => false,
         }
     }
 
@@ -108,10 +111,10 @@ pub fn to_http_code(common_code: CommonCode) -> http::StatusCode {
             http::StatusCode::BAD_REQUEST
         }
         CommonCode::External => http::StatusCode::NOT_ACCEPTABLE,
-        CommonCode::UserNotFound => http::StatusCode::NOT_FOUND,
-        CommonCode::UserPasswordMismatch | CommonCode::AuthHeaderNotFound => {
-            http::StatusCode::UNAUTHORIZED
-        }
+        CommonCode::NotExists => http::StatusCode::NOT_FOUND,
+        CommonCode::UserPasswordMismatch
+        | CommonCode::AuthHeaderNotFound
+        | CommonCode::UserNotFound => http::StatusCode::UNAUTHORIZED,
         CommonCode::AccessDenied | CommonCode::PermissionDenied => http::StatusCode::FORBIDDEN,
     }
 }

@@ -12,7 +12,7 @@ use utoipa::{ToResponse, ToSchema};
 #[macro_export]
 macro_rules! common_err_res {
     ($err:expr) => {
-        Err(crate::schema::common::ErrRes::from($err))?
+        Err(data_mind::schema::common::ErrRes::from($err))?
     };
 }
 
@@ -28,6 +28,16 @@ pub struct OkRes<T: Serialize + Debug + ToSchema> {
     /// 📚 响应体数据部分
     #[schema(example = json!("{"field" = "hello world!"}"))]
     pub data: T,
+}
+
+impl<T: Serialize + Debug + ToSchema> OkRes<T> {
+    pub fn from_with_msg(msg: String, data: T) -> Self {
+        Self {
+            code: 200,
+            message: msg,
+            data,
+        }
+    }
 }
 
 /// 用于响应错误响应的通用响应体

@@ -2,9 +2,7 @@
 
 use std::rc::Rc;
 
-use crate::{
-    common_err_res, handler::auth::error::JwtNotFoundSnafu, schema::auth_schema::JwtClaims,
-};
+use crate::{handler::auth::error::JwtNotFoundSnafu, schema::auth_schema::JwtClaims};
 use actix_web::{
     body::EitherBody,
     dev::{self, Service, ServiceRequest, ServiceResponse, Transform},
@@ -12,6 +10,7 @@ use actix_web::{
     Error, HttpMessage,
 };
 use chrono::Utc;
+use data_mind::common_err_res;
 use futures::{
     future::{ready, LocalBoxFuture, Ready},
     FutureExt, TryFutureExt,

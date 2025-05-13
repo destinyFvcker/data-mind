@@ -1,10 +1,17 @@
-use crate::schema::service::serv_aindex;
+use crate::{
+    repository::service::is_index_code_exists,
+    schema::{
+        common::OkRes,
+        error::{InternalServerSnafu, NotFoundSnafu, OrdinError},
+        service::serv_aindex,
+    },
+};
 use actix_web::{
-    error::ErrorInternalServerError,
     get,
     web::{self, Json},
 };
 use serde::Deserialize;
+use snafu::ResultExt;
 use utoipa::IntoParams;
 use utoipa_actix_web::{scope, service_config::ServiceConfig};
 
@@ -39,19 +46,26 @@ struct LimitQuery {
         LimitQuery
     ),
     responses(
-        (status = 200, description = "成功获取限定时间范围内的50ETF期权波动率指数QVIX K线数据", body = Vec<serv_aindex::ServIndexOption50EtfQvixKline>)
+        (status = 200, description = "成功获取限定时间范围内的50ETF期权波动率指数QVIX K线数据", body = OkRes<Vec<serv_aindex::ServIndexOption50EtfQvixKline>>),
+        (status = 401, description = "没有访问权限", body = OrdinError),
+        (status = 500, description = "发生服务器内部错误", body = OrdinError),
     )
 )]
 #[get("/index_option_50etf_qvix_kline")]
 async fn index_option_50etf_qvix_kline(
     query: web::Query<LimitQuery>,
     ch_client: web::Data<clickhouse::Client>,
-) -> actix_web::Result<Json<Vec<serv_aindex::ServIndexOption50EtfQvixKline>>> {
+) -> Result<Json<OkRes<Vec<serv_aindex::ServIndexOption50EtfQvixKline>>>, OrdinError> {
     let data =
         serv_aindex::ServIndexOption50EtfQvixKline::fetch_with_limit(&ch_client, query.limit)
             .await
-            .map_err(|err| ErrorInternalServerError(err))?;
-    Ok(Json(data))
+            .context(InternalServerSnafu)?;
+
+    let res = OkRes::from_with_msg(
+        "成功获取限定时间范围内的50ETF期权波动率指数QVIX K线数据".to_owned(),
+        data,
+    );
+    Ok(Json(res))
 }
 
 /// 50ETF 期权波动率指数 QVIX 5日/10日/20日移动平均线数据
@@ -61,18 +75,25 @@ async fn index_option_50etf_qvix_kline(
         LimitQuery
     ),
     responses(
-        (status = 200, description = "成功获取限定时间范围内50ETF期权波动率指数QVIX5日/10日/20日移动平均线数据", body = Vec<serv_aindex::ServIndexOption50EtfQvixMA>)
+        (status = 200, description = "成功获取限定时间范围内50ETF期权波动率指数QVIX5日/10日/20日移动平均线数据", body = OkRes<Vec<serv_aindex::ServIndexOption50EtfQvixMA>>),
+        (status = 401, description = "没有访问权限", body = OrdinError),
+        (status = 500, description = "发生服务器内部错误", body = OrdinError),
     )
 )]
 #[get("/index_option_50etf_qvix_mas")]
 async fn index_option_50etf_qvix_mas(
     query: web::Query<LimitQuery>,
     ch_client: web::Data<clickhouse::Client>,
-) -> actix_web::Result<Json<Vec<serv_aindex::ServIndexOption50EtfQvixMA>>> {
+) -> Result<Json<OkRes<Vec<serv_aindex::ServIndexOption50EtfQvixMA>>>, OrdinError> {
     let data = serv_aindex::ServIndexOption50EtfQvixMA::fetch_with_limit(&ch_client, query.limit)
         .await
-        .map_err(|err| ErrorInternalServerError(err))?;
-    Ok(Json(data))
+        .context(InternalServerSnafu)?;
+
+    let res = OkRes::from_with_msg(
+        "成功获取限定时间范围内50ETF期权波动率指数QVIX5日/10日/20日移动平均线数据".to_owned(),
+        data,
+    );
+    Ok(Json(res))
 }
 
 /// 带指定指数代码的限定请求体
@@ -94,22 +115,33 @@ struct LimitQueryWithCode {
         LimitQueryWithCode
     ),
     responses(
-        (status = 200, description = "成功获取指定指数代码的日频K线数据", body = Vec<serv_aindex::ServStockZhIndexDailyKline>)
+        (status = 200, description = "成功获取指定指数代码的日频K线数据", body = OkRes<Vec<serv_aindex::ServStockZhIndexDailyKline>>),
+        (status = 404, description = "对应个股信息不存在", body = OrdinError),
+        (status = 401, description = "没有访问权限", body = OrdinError),
+        (status = 500, description = "发生服务器内部错误", body = OrdinError),
     )
 )]
 #[get("/stock_zh_index_daily_kline")]
 async fn stock_zh_index_daily_kline(
     query: web::Query<LimitQueryWithCode>,
     ch_client: web::Data<clickhouse::Client>,
-) -> actix_web::Result<Json<Vec<serv_aindex::ServStockZhIndexDailyKline>>> {
+) -> Result<Json<OkRes<Vec<serv_aindex::ServStockZhIndexDailyKline>>>, OrdinError> {
+    is_index_code_exists(&ch_client, &query.index_code)
+        .await
+        .context(InternalServerSnafu)?
+        .then_some(())
+        .ok_or(NotFoundSnafu.build())?;
+
     let data = serv_aindex::ServStockZhIndexDailyKline::fetch_with_limit(
         &ch_client,
         &query.index_code,
         query.limit,
     )
     .await
-    .map_err(|err| ErrorInternalServerError(err))?;
-    Ok(Json(data))
+    .context(InternalServerSnafu)?;
+
+    let res = OkRes::from_with_msg("成功获取指定指数代码的日频K线数据".to_owned(), data);
+    Ok(Json(res))
 }
 
 /// 获取指定指数代码的移动平均线数据
@@ -119,22 +151,33 @@ async fn stock_zh_index_daily_kline(
         LimitQueryWithCode
     ),
     responses(
-        (status = 200, description = "成功获取指定的指数代码的移动平均线数据", body = Vec<serv_aindex::ServStockZhIndexDailyMA>)
+        (status = 200, description = "成功获取指定的指数代码的移动平均线数据", body = Vec<serv_aindex::ServStockZhIndexDailyMA>),
+        (status = 404, description = "对应个股信息不存在", body = OrdinError),
+        (status = 401, description = "没有访问权限", body = OrdinError),
+        (status = 500, description = "发生服务器内部错误", body = OrdinError),
     )
 )]
 #[get("/stock_zh_index_daily_mas")]
 async fn stock_zh_index_daily_mas(
     query: web::Query<LimitQueryWithCode>,
     ch_client: web::Data<clickhouse::Client>,
-) -> actix_web::Result<Json<Vec<serv_aindex::ServStockZhIndexDailyMA>>> {
+) -> Result<Json<OkRes<Vec<serv_aindex::ServStockZhIndexDailyMA>>>, OrdinError> {
+    is_index_code_exists(&ch_client, &query.index_code)
+        .await
+        .context(InternalServerSnafu)?
+        .then_some(())
+        .ok_or(NotFoundSnafu.build())?;
+
     let data = serv_aindex::ServStockZhIndexDailyMA::fetch_with_limit(
         &ch_client,
         &query.index_code,
         query.limit,
     )
     .await
-    .map_err(|err| ErrorInternalServerError(err))?;
-    Ok(Json(data))
+    .context(InternalServerSnafu)?;
+
+    let res = OkRes::from_with_msg("成功获取指定的指数代码的移动平均线数据".to_owned(), data);
+    Ok(Json(res))
 }
 
 /// 获取指定指数代码的日频交易量数据
@@ -144,22 +187,33 @@ async fn stock_zh_index_daily_mas(
         LimitQueryWithCode
     ),
     responses(
-        (status = 200, description = "成功获取指定的指数代码的日频交易量数据", body = Vec<serv_aindex::ServStockZhIndexDailyVolume>)
+        (status = 200, description = "成功获取指定的指数代码的日频交易量数据", body = OkRes<Vec<serv_aindex::ServStockZhIndexDailyVolume>>),
+        (status = 404, description = "对应个股信息不存在", body = OrdinError),
+        (status = 401, description = "没有访问权限", body = OrdinError),
+        (status = 500, description = "发生服务器内部错误", body = OrdinError),
     )
 )]
 #[get("/stock_zh_index_daily_volume")]
 async fn stock_zh_index_daily_volume(
     query: web::Query<LimitQueryWithCode>,
     ch_client: web::Data<clickhouse::Client>,
-) -> actix_web::Result<Json<Vec<serv_aindex::ServStockZhIndexDailyVolume>>> {
+) -> Result<Json<OkRes<Vec<serv_aindex::ServStockZhIndexDailyVolume>>>, OrdinError> {
+    is_index_code_exists(&ch_client, &query.index_code)
+        .await
+        .context(InternalServerSnafu)?
+        .then_some(())
+        .ok_or(NotFoundSnafu.build())?;
+
     let data = serv_aindex::ServStockZhIndexDailyVolume::fetch_with_limit(
         &ch_client,
         &query.index_code,
         query.limit,
     )
     .await
-    .map_err(|err| ErrorInternalServerError(err))?;
-    Ok(Json(data))
+    .context(InternalServerSnafu)?;
+
+    let res = OkRes::from_with_msg("成功获取指定的指数代码的日频交易量数据".to_owned(), data);
+    Ok(Json(res))
 }
 
 /// 普通分页请求体
@@ -180,20 +234,24 @@ struct PaginQuery {
         PaginQuery
     ),
     responses(
-        (status = 200, description = "成功分页获取对应交易日的交易信息", body = Vec<serv_aindex::ServStockZhIndexDailyPagin>) 
+        (status = 200, description = "成功分页获取对应交易日的交易信息", body = Vec<serv_aindex::ServStockZhIndexDailyPagin>),
+        (status = 401, description = "没有访问权限", body = OrdinError),
+        (status = 500, description = "发生服务器内部错误", body = OrdinError), 
     )
 )]
 #[get("/stock_zh_index_daily_pagin")]
 async fn stock_zh_index_daily_pagin(
     query: web::Query<PaginQuery>,
     ch_client: web::Data<clickhouse::Client>,
-) -> actix_web::Result<Json<Vec<serv_aindex::ServStockZhIndexDailyPagin>>> {
+) -> Result<Json<OkRes<Vec<serv_aindex::ServStockZhIndexDailyPagin>>>, OrdinError> {
     let data = serv_aindex::ServStockZhIndexDailyPagin::fetch_paginate(
         &ch_client,
         query.page_size,
         query.page_index,
     )
     .await
-    .map_err(|err| ErrorInternalServerError(err))?;
-    Ok(Json(data))
+    .context(InternalServerSnafu)?;
+
+    let res = OkRes::from_with_msg("成功分页获取对应交易日的交易信息".to_owned(), data);
+    Ok(Json(res))
 }
