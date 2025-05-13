@@ -4255,6 +4255,7 @@ dependencies = [
  "utoipa",
  "utoipa-actix-web",
  "utoipa-scalar",
+ "utoipa-swagger-ui",
 ]
 
 [[package]]

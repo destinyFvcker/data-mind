@@ -15,6 +15,6 @@ pub fn config(github_state: Data<GithubStateCache>) -> impl FnOnce(&mut ServiceC
     }
 }
 
-pub const API_TAG: &'static str = "auths";
+pub const API_TAG: &'static str = "鉴权接口";
 pub const API_DESC: &'static str =
-    "web服务鉴权功能模块，接入github/wechat OAuth登陆，提供jwt middleware";
+    "web服务鉴权功能模块，接入github/wechat OAuth登陆，提供jwt middleware进行访问控制";
