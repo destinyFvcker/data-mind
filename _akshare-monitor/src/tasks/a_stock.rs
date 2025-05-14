@@ -41,14 +41,14 @@ pub(super) async fn start_a_stock_tasks(ext_res: ExternalResource) {
     // };
     // SCHEDULE_TASK_MANAGER.add_task(realtime_stock_monitor).await;
 
-    // let stock_zh_a_hist_monitor = StockZhAHistMonitor {
-    //     data_url: with_base_url("/stock_zh_a_hist"),
-    //     data_table: "stock_zh_a_hist".to_owned(),
-    //     ext_res: ext_res.clone(),
-    // };
-    // SCHEDULE_TASK_MANAGER
-    //     .add_task(stock_zh_a_hist_monitor)
-    //     .await;
+    let stock_zh_a_hist_monitor = StockZhAHistMonitor {
+        data_url: with_base_url("/stock_zh_a_hist"),
+        data_table: "stock_zh_a_hist".to_owned(),
+        ext_res: ext_res.clone(),
+    };
+    SCHEDULE_TASK_MANAGER
+        .add_task(stock_zh_a_hist_monitor)
+        .await;
 
     let stock_hsgt_hist_em_monitor = StockHsgtHistEmMonitor {
         data_url: with_base_url("/stock_hsgt_hist_em"),
