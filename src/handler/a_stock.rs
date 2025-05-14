@@ -15,7 +15,7 @@ use crate::{
         akshare::{AkStockIndividualInfoEm, AkStockZhAStEm},
         common::OkRes,
         error::{BadReqSnafu, InternalServerSnafu, NotFoundSnafu, OrdinError},
-        service::serv_astock,
+        service::serv_astock::{self, StockDailyPagin},
     },
 };
 
@@ -29,7 +29,8 @@ pub fn mount_astock_scope(config: &mut ServiceConfig) {
             .service(fetch_mas_with_limit)
             .service(fetch_daily_kline)
             .service(fetch_daily_trading_volume)
-            .service(fetch_daily_indicator),
+            .service(fetch_daily_indicator)
+            .service(fetch_astock_daily_pagin),
     );
 }
 
@@ -287,5 +288,27 @@ async fn fetch_stock_zh_a_st(
         "成功获取当前交易日风险警示版的所有股票的行情数据".to_owned(),
         data,
     );
+    Ok(Json(res))
+}
+
+/// A股每股最新日频数据获取
+#[utoipa::path(
+    tag = API_TAG,
+    responses(
+        (status = 200, description = "成功获取最新交易日A股日频分页数据", body = OkRes<Vec<StockDailyPagin>>),
+        (status = 401, description = "没有访问权限", body = OrdinError),
+        (status = 500, description = "发生服务器内部错误", body = OrdinError),
+    )
+)]
+#[get("/stock_daily_pagin")]
+async fn fetch_astock_daily_pagin(
+    ch_client: web::Data<clickhouse::Client>,
+) -> Result<Json<OkRes<Vec<StockDailyPagin>>>, OrdinError> {
+    // TODO 加上分页/排序数据获取
+    let data = StockDailyPagin::fetch_all(&ch_client)
+        .await
+        .context(InternalServerSnafu)?;
+
+    let res = OkRes::from_with_msg("成功获取最新交易日A股日频分页数据".to_owned(), data);
     Ok(Json(res))
 }

@@ -215,15 +215,15 @@ async fn stock_zh_index_daily_volume(
     Ok(Json(res))
 }
 
-/// 普通分页请求体
+/// 普通分页请求体，假如传入的参数有一个为空则获取所有数据
 #[derive(Debug, Deserialize, IntoParams)]
 struct PaginQuery {
     /// 请求某页的页索引(从1开始)
     #[param(example = 1)]
-    page_index: u32,
+    page_index: Option<u32>,
     /// 每页的大小
     #[param(example = 50)]
-    page_size: u32,
+    page_size: Option<u32>,
 }
 
 /// 分页获取所有指数最新一个交易日的交易信息
@@ -243,13 +243,16 @@ async fn stock_zh_index_daily_pagin(
     query: web::Query<PaginQuery>,
     ch_client: web::Data<clickhouse::Client>,
 ) -> Result<Json<OkRes<Vec<serv_aindex::StockZhIndexDailyPagin>>>, OrdinError> {
-    let data = serv_aindex::StockZhIndexDailyPagin::fetch_paginate(
-        &ch_client,
-        query.page_size,
-        query.page_index,
-    )
-    .await
-    .context(InternalServerSnafu)?;
+    let data = match (query.page_index, query.page_size) {
+        (Some(page_index), Some(page_size)) => {
+            serv_aindex::StockZhIndexDailyPagin::fetch_paginate(&ch_client, page_size, page_index)
+                .await
+                .context(InternalServerSnafu)?
+        }
+        _ => serv_aindex::StockZhIndexDailyPagin::fetch_all(&ch_client)
+            .await
+            .context(InternalServerSnafu)?,
+    };
 
     let res = OkRes::from_with_msg("成功分页获取对应交易日的交易信息".to_owned(), data);
     Ok(Json(res))

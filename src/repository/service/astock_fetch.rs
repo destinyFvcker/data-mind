@@ -1,6 +1,9 @@
 use crate::{
     repository::akshare::StockAdjustmentType,
-    schema::service::serv_astock::{self, StockDailyTradingVolume},
+    schema::{
+        self,
+        service::serv_astock::{self, StockDailyTradingVolume},
+    },
 };
 
 /// 判断一个指定的stock code是否存在
@@ -14,6 +17,8 @@ pub async fn is_stock_code_exists(
         .fetch_one()
         .await?)
 }
+
+// ---------------------------------------------------------------------------------
 
 impl serv_astock::StockMALines {
     /// 获取对应`stock_id`从当日开始倒推`limit_days`之中每天对应的5日平均线、
@@ -93,6 +98,8 @@ ORDER BY date ASC
     }
 }
 
+// ---------------------------------------------------------------------------------
+
 impl serv_astock::StockDailyKline {
     pub async fn fetch_with_limit(
         ch_client: &clickhouse::Client,
@@ -136,6 +143,8 @@ ORDER BY date ASC
     }
 }
 
+// ---------------------------------------------------------------------------------
+
 impl StockDailyTradingVolume {
     pub async fn fetch_with_limit(
         ch_client: &clickhouse::Client,
@@ -172,6 +181,8 @@ ORDER BY date ASC
         Ok(data)
     }
 }
+
+// ---------------------------------------------------------------------------------
 
 impl serv_astock::StockDailyIndicator {
     pub async fn fetch_with_limit(
@@ -214,6 +225,67 @@ ORDER BY date ASC
             .fetch_all()
             .await?;
         Ok(data)
+    }
+}
+
+// ---------------------------------------------------------------------------------
+
+impl serv_astock::StockDailyPagin {
+    #[allow(unused)]
+    pub async fn fetch_paginate(
+        ch_client: &clickhouse::Client,
+        page_index: u32,
+        page_size: u32,
+        sort_type: schema::service::SortType,
+        sort_fileds: &Vec<String>,
+    ) -> anyhow::Result<Vec<Self>> {
+        let sql = format!(
+            r#"
+SELECT
+    code,
+    argMax(open, date) AS open,
+    argMax(close, date) AS close,
+    argMax(high, date) AS high,
+    argMax(low, date) AS low,
+    argMax(trading_volume, date) AS trading_volume,
+    argMax(trading_value, date) AS trading_value,
+    argMax(amplitude, date) AS amplitude,
+    argMax(turnover_rate, date) AS turnover_rate,
+    argMax(change_percentage, date) AS change_percentage,
+    argMax(change_amount, date) AS change_amount,
+    max(date) AS latest_date
+FROM stock_zh_a_hist
+GROUP BY code
+ORDER BY code ASC
+LIMIT 0, 10 
+        "#
+        );
+
+        todo!()
+    }
+
+    pub async fn fetch_all(ch_client: &clickhouse::Client) -> anyhow::Result<Vec<Self>> {
+        let sql = r#"
+SELECT
+    code,
+    argMax(open, date) AS open,
+    argMax(close, date) AS close,
+    argMax(high, date) AS high,
+    argMax(low, date) AS low,
+    argMax(trading_volume, date) AS trading_volume,
+    argMax(trading_value, date) AS trading_value,
+    argMax(amplitude, date) AS amplitude,
+    argMax(turnover_rate, date) AS turnover_rate,
+    argMax(change_percentage, date) AS change_percentage,
+    argMax(change_amount, date) AS change_amount,
+    max(date) AS latest_date
+FROM stock_zh_a_hist
+GROUP BY code
+ORDER BY code ASC
+        "#;
+
+        let data = ch_client.query(sql).fetch_all().await?;
+        return Ok(data);
     }
 }
 

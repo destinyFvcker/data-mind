@@ -221,6 +221,28 @@ LIMIT ?, ?
             .await?;
         Ok(data)
     }
+
+    /// 获取全量最新一个交易日的数据
+    pub async fn fetch_all(ch_client: &clickhouse::Client) -> anyhow::Result<Vec<Self>> {
+        let sql = r#"
+SELECT
+    code,
+    max(date) AS latest_date,
+    argMax(open, date) AS open,
+    argMax(close, date) AS close,
+    argMax(high, date) AS high,
+    argMax(low, date) AS low,
+    round(((high - low) / close) * 100, 2) AS amplitude,
+    round(((close - open) / open) * 100, 2) AS change_percentage,
+    round(close - open, 2) AS change_amount
+FROM stock_zh_index_daily
+GROUP BY code
+ORDER BY code ASC
+        "#;
+
+        let data = ch_client.query(sql).fetch_all().await?;
+        Ok(data)
+    }
 }
 
 // ---------------------------------------------------------------------------------
