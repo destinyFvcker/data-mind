@@ -46,7 +46,7 @@ struct LimitQuery {
         LimitQuery
     ),
     responses(
-        (status = 200, description = "成功获取限定时间范围内的50ETF期权波动率指数QVIX K线数据", body = OkRes<Vec<serv_aindex::ServIndexOption50EtfQvixKline>>),
+        (status = 200, description = "成功获取限定时间范围内的50ETF期权波动率指数QVIX K线数据", body = OkRes<Vec<serv_aindex::IndexOption50EtfQvixKline>>),
         (status = 401, description = "没有访问权限", body = OrdinError),
         (status = 500, description = "发生服务器内部错误", body = OrdinError),
     )
@@ -55,11 +55,10 @@ struct LimitQuery {
 async fn index_option_50etf_qvix_kline(
     query: web::Query<LimitQuery>,
     ch_client: web::Data<clickhouse::Client>,
-) -> Result<Json<OkRes<Vec<serv_aindex::ServIndexOption50EtfQvixKline>>>, OrdinError> {
-    let data =
-        serv_aindex::ServIndexOption50EtfQvixKline::fetch_with_limit(&ch_client, query.limit)
-            .await
-            .context(InternalServerSnafu)?;
+) -> Result<Json<OkRes<Vec<serv_aindex::IndexOption50EtfQvixKline>>>, OrdinError> {
+    let data = serv_aindex::IndexOption50EtfQvixKline::fetch_with_limit(&ch_client, query.limit)
+        .await
+        .context(InternalServerSnafu)?;
 
     let res = OkRes::from_with_msg(
         "成功获取限定时间范围内的50ETF期权波动率指数QVIX K线数据".to_owned(),
@@ -75,7 +74,7 @@ async fn index_option_50etf_qvix_kline(
         LimitQuery
     ),
     responses(
-        (status = 200, description = "成功获取限定时间范围内50ETF期权波动率指数QVIX5日/10日/20日移动平均线数据", body = OkRes<Vec<serv_aindex::ServIndexOption50EtfQvixMA>>),
+        (status = 200, description = "成功获取限定时间范围内50ETF期权波动率指数QVIX5日/10日/20日移动平均线数据", body = OkRes<Vec<serv_aindex::IndexOption50EtfQvixMA>>),
         (status = 401, description = "没有访问权限", body = OrdinError),
         (status = 500, description = "发生服务器内部错误", body = OrdinError),
     )
@@ -84,8 +83,8 @@ async fn index_option_50etf_qvix_kline(
 async fn index_option_50etf_qvix_mas(
     query: web::Query<LimitQuery>,
     ch_client: web::Data<clickhouse::Client>,
-) -> Result<Json<OkRes<Vec<serv_aindex::ServIndexOption50EtfQvixMA>>>, OrdinError> {
-    let data = serv_aindex::ServIndexOption50EtfQvixMA::fetch_with_limit(&ch_client, query.limit)
+) -> Result<Json<OkRes<Vec<serv_aindex::IndexOption50EtfQvixMA>>>, OrdinError> {
+    let data = serv_aindex::IndexOption50EtfQvixMA::fetch_with_limit(&ch_client, query.limit)
         .await
         .context(InternalServerSnafu)?;
 
@@ -115,7 +114,7 @@ struct LimitQueryWithCode {
         LimitQueryWithCode
     ),
     responses(
-        (status = 200, description = "成功获取指定指数代码的日频K线数据", body = OkRes<Vec<serv_aindex::ServStockZhIndexDailyKline>>),
+        (status = 200, description = "成功获取指定指数代码的日频K线数据", body = OkRes<Vec<serv_aindex::StockZhIndexDailyKline>>),
         (status = 404, description = "对应个股信息不存在", body = OrdinError),
         (status = 401, description = "没有访问权限", body = OrdinError),
         (status = 500, description = "发生服务器内部错误", body = OrdinError),
@@ -125,14 +124,14 @@ struct LimitQueryWithCode {
 async fn stock_zh_index_daily_kline(
     query: web::Query<LimitQueryWithCode>,
     ch_client: web::Data<clickhouse::Client>,
-) -> Result<Json<OkRes<Vec<serv_aindex::ServStockZhIndexDailyKline>>>, OrdinError> {
+) -> Result<Json<OkRes<Vec<serv_aindex::StockZhIndexDailyKline>>>, OrdinError> {
     is_index_code_exists(&ch_client, &query.index_code)
         .await
         .context(InternalServerSnafu)?
         .then_some(())
         .ok_or(NotFoundSnafu.build())?;
 
-    let data = serv_aindex::ServStockZhIndexDailyKline::fetch_with_limit(
+    let data = serv_aindex::StockZhIndexDailyKline::fetch_with_limit(
         &ch_client,
         &query.index_code,
         query.limit,
@@ -151,7 +150,7 @@ async fn stock_zh_index_daily_kline(
         LimitQueryWithCode
     ),
     responses(
-        (status = 200, description = "成功获取指定的指数代码的移动平均线数据", body = Vec<serv_aindex::ServStockZhIndexDailyMA>),
+        (status = 200, description = "成功获取指定的指数代码的移动平均线数据", body = Vec<serv_aindex::StockZhIndexDailyMA>),
         (status = 404, description = "对应个股信息不存在", body = OrdinError),
         (status = 401, description = "没有访问权限", body = OrdinError),
         (status = 500, description = "发生服务器内部错误", body = OrdinError),
@@ -161,14 +160,14 @@ async fn stock_zh_index_daily_kline(
 async fn stock_zh_index_daily_mas(
     query: web::Query<LimitQueryWithCode>,
     ch_client: web::Data<clickhouse::Client>,
-) -> Result<Json<OkRes<Vec<serv_aindex::ServStockZhIndexDailyMA>>>, OrdinError> {
+) -> Result<Json<OkRes<Vec<serv_aindex::StockZhIndexDailyMA>>>, OrdinError> {
     is_index_code_exists(&ch_client, &query.index_code)
         .await
         .context(InternalServerSnafu)?
         .then_some(())
         .ok_or(NotFoundSnafu.build())?;
 
-    let data = serv_aindex::ServStockZhIndexDailyMA::fetch_with_limit(
+    let data = serv_aindex::StockZhIndexDailyMA::fetch_with_limit(
         &ch_client,
         &query.index_code,
         query.limit,
@@ -187,7 +186,7 @@ async fn stock_zh_index_daily_mas(
         LimitQueryWithCode
     ),
     responses(
-        (status = 200, description = "成功获取指定的指数代码的日频交易量数据", body = OkRes<Vec<serv_aindex::ServStockZhIndexDailyVolume>>),
+        (status = 200, description = "成功获取指定的指数代码的日频交易量数据", body = OkRes<Vec<serv_aindex::StockZhIndexDailyVolume>>),
         (status = 404, description = "对应个股信息不存在", body = OrdinError),
         (status = 401, description = "没有访问权限", body = OrdinError),
         (status = 500, description = "发生服务器内部错误", body = OrdinError),
@@ -197,14 +196,14 @@ async fn stock_zh_index_daily_mas(
 async fn stock_zh_index_daily_volume(
     query: web::Query<LimitQueryWithCode>,
     ch_client: web::Data<clickhouse::Client>,
-) -> Result<Json<OkRes<Vec<serv_aindex::ServStockZhIndexDailyVolume>>>, OrdinError> {
+) -> Result<Json<OkRes<Vec<serv_aindex::StockZhIndexDailyVolume>>>, OrdinError> {
     is_index_code_exists(&ch_client, &query.index_code)
         .await
         .context(InternalServerSnafu)?
         .then_some(())
         .ok_or(NotFoundSnafu.build())?;
 
-    let data = serv_aindex::ServStockZhIndexDailyVolume::fetch_with_limit(
+    let data = serv_aindex::StockZhIndexDailyVolume::fetch_with_limit(
         &ch_client,
         &query.index_code,
         query.limit,
@@ -234,7 +233,7 @@ struct PaginQuery {
         PaginQuery
     ),
     responses(
-        (status = 200, description = "成功分页获取对应交易日的交易信息", body = Vec<serv_aindex::ServStockZhIndexDailyPagin>),
+        (status = 200, description = "成功分页获取对应交易日的交易信息", body = Vec<serv_aindex::StockZhIndexDailyPagin>),
         (status = 401, description = "没有访问权限", body = OrdinError),
         (status = 500, description = "发生服务器内部错误", body = OrdinError), 
     )
@@ -243,8 +242,8 @@ struct PaginQuery {
 async fn stock_zh_index_daily_pagin(
     query: web::Query<PaginQuery>,
     ch_client: web::Data<clickhouse::Client>,
-) -> Result<Json<OkRes<Vec<serv_aindex::ServStockZhIndexDailyPagin>>>, OrdinError> {
-    let data = serv_aindex::ServStockZhIndexDailyPagin::fetch_paginate(
+) -> Result<Json<OkRes<Vec<serv_aindex::StockZhIndexDailyPagin>>>, OrdinError> {
+    let data = serv_aindex::StockZhIndexDailyPagin::fetch_paginate(
         &ch_client,
         query.page_size,
         query.page_index,

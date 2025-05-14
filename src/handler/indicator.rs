@@ -164,17 +164,21 @@ async fn stock_rank_cxd_ths(
 /// 同花顺-数据中心-技术选股-连续上涨(连续上涨天数超过一周)
 #[utoipa::path(
     tag = API_TAG,
+    params(
+        ("days", description = "限定至少连续上涨的天数", example = 7)
+    ),
     responses(
         (status = 200, description = "获取同花顺-数据中心-技术选股-连续上涨数据成功", body = OkRes<Vec<AkStockRankLxszThs>>),
         (status = 401, description = "没有访问权限", body = OrdinError),
         (status = 500, description = "发生服务器内部错误", body = OrdinError),
     )
 )]
-#[get("/stock_rank_lxsz_ths")]
+#[get("/stock_rank_lxsz_ths/{days}")]
 async fn stock_rank_lxsz_ths(
+    days: web::Path<i32>,
     ch_client: Data<clickhouse::Client>,
 ) -> Result<Json<OkRes<Vec<AkStockRankLxszThs>>>, OrdinError> {
-    let data = AkStockRankLxszThs::fetch_with_min_rising_days(&ch_client, 7)
+    let data = AkStockRankLxszThs::fetch_with_min_rising_days(&ch_client, days.into_inner())
         .await
         .context(InternalServerSnafu)?;
 

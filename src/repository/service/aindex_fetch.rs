@@ -1,9 +1,7 @@
-use chrono::NaiveDate;
-use clickhouse::Row;
-use serde::{Deserialize, Serialize};
-use utoipa::ToSchema;
-
-use crate::utils::limit_or_not;
+use crate::{
+    schema::service::serv_aindex::{self},
+    utils::limit_or_not,
+};
 
 /// 判断一个指数代码是否存在
 pub async fn is_index_code_exists(
@@ -17,23 +15,7 @@ pub async fn is_index_code_exists(
         .await?)
 }
 
-/// 50ETF 期权波动率指数 QVIX; 又称中国版的恐慌指数 K线数据
-#[derive(Debug, Deserialize, Serialize, Row, ToSchema)]
-pub struct IndexOption50EtfQvixKlineFetch {
-    /// 开盘价
-    pub open: f64,
-    /// 收盘价
-    pub close: f64,
-    /// 最高价
-    pub high: f64,
-    /// 最低价
-    pub low: f64,
-    /// 数据日期，格式为YYY-MM-DD
-    #[serde(deserialize_with = "clickhouse::serde::chrono::date::deserialize")]
-    pub date: NaiveDate,
-}
-
-impl IndexOption50EtfQvixKlineFetch {
+impl serv_aindex::IndexOption50EtfQvixKline {
     /// 从clickhouse之中获取limit条数据，假如传入的limit小于0，则获取全量数据
     pub async fn fetch_with_limit(
         ch_client: &clickhouse::Client,
@@ -64,21 +46,7 @@ ORDER BY date ASC"#;
 
 // ---------------------------------------------------------------------------------
 
-/// 50ETF 期权波动率指数 QVIX; 各种移动平均线数据
-#[derive(Debug, Serialize, Deserialize, Row, ToSchema)]
-pub struct IndexOption50EtfQvixMAFetch {
-    /// 数据日期，格式为YYYY-DD-MM
-    #[serde(deserialize_with = "clickhouse::serde::chrono::date::deserialize")]
-    pub date: NaiveDate,
-    /// 对应数据日期的5日平均线数据
-    pub ma5: Option<f64>,
-    /// 对应数据日期的10日平均线数据
-    pub ma10: Option<f64>,
-    /// 对应数据日期的20日平均线数据
-    pub ma20: Option<f64>,
-}
-
-impl IndexOption50EtfQvixMAFetch {
+impl serv_aindex::IndexOption50EtfQvixMA {
     pub async fn fetch_with_limit(
         ch_client: &clickhouse::Client,
         limit_days: i32,
@@ -107,24 +75,7 @@ ORDER BY date ASC"#;
 
 // ---------------------------------------------------------------------------------
 
-#[derive(Debug, Deserialize, Serialize, Row, ToSchema)]
-pub struct StockZhIndexDailyKlineFetch {
-    /// 开盘价(元)
-    pub open: f64,
-    /// 收盘价(元)
-    pub close: f64,
-    /// 最高价(元)
-    pub high: f64,
-    /// 最低价(元)
-    pub low: f64,
-    /// 交易量(手)
-    pub volume: f64,
-    /// 数据日期，格式为YYYY-MM-DD
-    #[serde(deserialize_with = "clickhouse::serde::chrono::date::deserialize")]
-    pub date: NaiveDate,
-}
-
-impl StockZhIndexDailyKlineFetch {
+impl serv_aindex::StockZhIndexDailyKline {
     /// 通过
     pub async fn fetch_with_limit(
         ch_client: &clickhouse::Client,
@@ -162,16 +113,7 @@ ORDER BY date ASC"#;
 
 // ---------------------------------------------------------------------------------
 
-#[derive(Debug, Deserialize, Serialize, Row, ToSchema)]
-pub struct StockZhIndexDailyVolumeFetch {
-    /// 交易日期
-    #[serde(deserialize_with = "clickhouse::serde::chrono::date::deserialize")]
-    pub date: NaiveDate,
-    /// 交易量
-    pub volume: f64,
-}
-
-impl StockZhIndexDailyVolumeFetch {
+impl serv_aindex::StockZhIndexDailyVolume {
     pub async fn fetch_with_limit(
         ch_client: &clickhouse::Client,
         index_code: &str,
@@ -207,20 +149,7 @@ ORDER BY date ASC
 
 // ---------------------------------------------------------------------------------
 
-#[derive(Debug, Serialize, Deserialize, Row, ToSchema)]
-pub struct StockZhIndexDailyMAFetch {
-    /// 数据日期，格式为YYYY-MM-DD
-    #[serde(deserialize_with = "clickhouse::serde::chrono::date::deserialize")]
-    pub date: NaiveDate,
-    /// 对应(指数代码, 数据日期)的5日移动平均线数据
-    pub ma5: Option<f64>,
-    /// 对应(指数代码, 数据日期)的10日移动平均线数据
-    pub ma10: Option<f64>,
-    /// 对应(指数代码, 数据日期)的20日移动平均线数据
-    pub ma20: Option<f64>,
-}
-
-impl StockZhIndexDailyMAFetch {
+impl serv_aindex::StockZhIndexDailyMA {
     pub async fn fetch_with_limit(
         ch_client: &clickhouse::Client,
         index_code: &str,
@@ -259,32 +188,7 @@ ORDER BY date ASC
 
 // ---------------------------------------------------------------------------------
 
-#[derive(Debug, Deserialize, Serialize, Row, ToSchema)]
-pub struct StockZhIndexDailyPaginFetch {
-    /// 指数代码
-    pub code: String,
-    /// 最新数据时间，格式为YYYY-MM-DD
-    #[serde(deserialize_with = "clickhouse::serde::chrono::date::deserialize")]
-    pub date: NaiveDate,
-    /// 开盘价
-    pub open: f64,
-    /// 收盘价
-    pub close: f64,
-    /// 最高价
-    pub high: f64,
-    /// 最低价
-    pub low: f64,
-    // 最新的一组交易量(5日)
-    // pub latest_volmes: Vec<f64>,
-    /// 振幅(%)
-    pub amplitude: f64,
-    /// 涨跌幅(%)
-    pub change_percentage: f64,
-    /// 涨跌额(%)
-    pub change_amount: f64,
-}
-
-impl StockZhIndexDailyPaginFetch {
+impl serv_aindex::StockZhIndexDailyPagin {
     /// 分页获取所有指数最新一个交易日的数据
     pub async fn fetch_paginate(
         ch_client: &clickhouse::Client,

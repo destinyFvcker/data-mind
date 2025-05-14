@@ -1,9 +1,7 @@
-use chrono::NaiveDate;
-use clickhouse::Row;
-use serde::{Deserialize, Serialize};
-use utoipa::ToSchema;
-
-use crate::repository::akshare::StockAdjustmentType;
+use crate::{
+    repository::akshare::StockAdjustmentType,
+    schema::service::serv_astock::{self, StockDailyTradingVolume},
+};
 
 /// 判断一个指定的stock code是否存在
 pub async fn is_stock_code_exists(
@@ -17,25 +15,7 @@ pub async fn is_stock_code_exists(
         .await?)
 }
 
-/// 移动平均线数据(MA5/MA10/MA20)
-#[derive(Debug, Serialize, Deserialize, Row, ToSchema)]
-pub struct MALinesFetch {
-    /// 数据点日期，格式为YYYY-MM-DD
-    #[schema(example = "2025-05-08")]
-    #[serde(deserialize_with = "clickhouse::serde::chrono::date::deserialize")]
-    pub date: NaiveDate,
-    /// 数据点日期对应的MA5值，注意单位(元)
-    #[schema(example = 13.29)]
-    pub ma5: Option<f64>,
-    /// 数据点日期对应的MA10值。注意单位(元)
-    #[schema(example = 13.481)]
-    pub ma10: Option<f64>,
-    /// 数据点日期对应的MA20值，注意单位(元)
-    #[schema(example = 13.8955)]
-    pub ma20: Option<f64>,
-}
-
-impl MALinesFetch {
+impl serv_astock::StockMALines {
     /// 获取对应`stock_id`从当日开始倒推`limit_days`之中每天对应的5日平均线、
     /// 10日平均线、20日平均线的数据。
     pub async fn fetch_with_limit(
@@ -113,23 +93,7 @@ ORDER BY date ASC
     }
 }
 
-/// 日频K线数据
-#[derive(Debug, Serialize, Deserialize, Row, ToSchema)]
-pub struct DailyKlineFetch {
-    /// 数据日期，格式为YYYY-MM-DD
-    #[serde(deserialize_with = "clickhouse::serde::chrono::date::deserialize")]
-    pub date: NaiveDate,
-    /// 开盘价(元)
-    pub open: f64,
-    /// 收盘价(元)
-    pub close: f64,
-    /// 最高价(元)
-    pub high: f64,
-    /// 最低价(元)
-    pub low: f64,
-}
-
-impl DailyKlineFetch {
+impl serv_astock::StockDailyKline {
     pub async fn fetch_with_limit(
         ch_client: &clickhouse::Client,
         adj_type: StockAdjustmentType,
@@ -172,17 +136,7 @@ ORDER BY date ASC
     }
 }
 
-/// 日频成交量数据
-#[derive(Debug, Serialize, Deserialize, Row, ToSchema)]
-pub struct DailyTradingVolumeFetch {
-    /// 数据日期，格式为YYYY-MM-DD
-    #[serde(deserialize_with = "clickhouse::serde::chrono::date::deserialize")]
-    pub date: NaiveDate,
-    /// 交易量(手)
-    pub trading_volume: f64,
-}
-
-impl DailyTradingVolumeFetch {
+impl StockDailyTradingVolume {
     pub async fn fetch_with_limit(
         ch_client: &clickhouse::Client,
         adj_type: StockAdjustmentType,
@@ -219,25 +173,7 @@ ORDER BY date ASC
     }
 }
 
-/// 日频其它指标数据
-#[derive(Debug, Serialize, Deserialize, Row, ToSchema)]
-pub struct DailyIndicatorFetch {
-    /// 数据日期，格式为YYYY-MM-DD
-    #[serde(deserialize_with = "clickhouse::serde::chrono::date::deserialize")]
-    pub date: NaiveDate,
-    /// 成交额,注意单位(元)
-    pub trading_value: f64,
-    /// 振幅(%)
-    pub amplitude: f64,
-    /// 换手率(%)
-    pub turnover_rate: f64,
-    /// 涨跌幅(%)
-    pub change_percent: f64,
-    /// 涨跌额,注意单位(元)
-    pub change_amount: f64,
-}
-
-impl DailyIndicatorFetch {
+impl serv_astock::StockDailyIndicator {
     pub async fn fetch_with_limit(
         ch_client: &clickhouse::Client,
         adj_type: StockAdjustmentType,
@@ -289,7 +225,7 @@ mod test {
 
     #[tokio::test]
     async fn test_fetch_ma_with_limit() {
-        let data = MALinesFetch::fetch_with_limit(&TEST_CH_CLIENT, "603777", 90)
+        let data = serv_astock::StockMALines::fetch_with_limit(&TEST_CH_CLIENT, "603777", 90)
             .await
             .unwrap();
 
@@ -298,7 +234,7 @@ mod test {
 
     #[tokio::test]
     async fn test_fetch_daily_stock_infos() {
-        let data = DailyKlineFetch::fetch_with_limit(
+        let data = serv_astock::StockDailyKline::fetch_with_limit(
             &TEST_CH_CLIENT,
             StockAdjustmentType::Backward,
             "603777",
@@ -308,7 +244,7 @@ mod test {
         .unwrap();
         println!("{:?}\n", data);
 
-        let data = DailyTradingVolumeFetch::fetch_with_limit(
+        let data = serv_astock::StockDailyTradingVolume::fetch_with_limit(
             &TEST_CH_CLIENT,
             StockAdjustmentType::Backward,
             "603777",
@@ -318,7 +254,7 @@ mod test {
         .unwrap();
         println!("{:?}\n", data);
 
-        let data = DailyIndicatorFetch::fetch_with_limit(
+        let data = serv_astock::StockDailyIndicator::fetch_with_limit(
             &TEST_CH_CLIENT,
             StockAdjustmentType::Backward,
             "603777",

@@ -85,7 +85,7 @@ CREATE TABLE IF NOT EXISTS stock_zh_a_hist
     -- 数据收集时间戳，毫秒等级
     `ts` DateTime64(3, 'Asia/Shanghai')
 )
-ENGINE = ReplacingMergeTree
+ENGINE = ReplacingMergeTree(ts)
 ORDER BY (code, date, adj_type);
 
 -- 东方财富网-数据中心-资金流向-沪深港通资金流向-沪深港通历史数据

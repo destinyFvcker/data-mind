@@ -10,8 +10,8 @@ members = [
     "_akshare-monitor",
     "_coze-plugin",
     "_web-server",
-    "__common_macro",
-    "__common_error",
+    "_common_macro",
+    "_common_error",
 ]
 
 [workspace.dependencies]
@@ -96,5 +96,5 @@ hmac.workspace = true
 sha2.workspace = true
 urlencoding.workspace = true
 dm_proto = { path = "./dm-proto" }
-common_macro = { path = "./__common_macro" }
-common_error = { path = "./__common_error" }
+common_macro = { path = "./_common_macro" }
+common_error = { path = "./_common_error" }

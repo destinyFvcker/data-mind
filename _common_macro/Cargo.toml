@@ -14,4 +14,4 @@ proc-macro = true
 proc-macro2 = "1.0.94"
 quote = "1.0.40"
 syn = "2.0.100"
-common_error = { path = "../__common_error" }
+common_error = { path = "../_common_error" }
