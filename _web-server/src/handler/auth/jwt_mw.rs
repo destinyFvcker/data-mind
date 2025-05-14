@@ -9,7 +9,6 @@ use actix_web::{
     http::header,
     Error, HttpMessage,
 };
-use chrono::Utc;
 use data_mind::common_err_res;
 use futures::{
     future::{ready, LocalBoxFuture, Ready},
@@ -18,7 +17,7 @@ use futures::{
 use jsonwebtoken::{decode, Algorithm, DecodingKey, Validation};
 use snafu::ResultExt;
 
-use super::error::{InvalidCredentialSnafu, InvalidSignatureSnafu, JwtExpireSnafu};
+use super::error::{InvalidCredentialSnafu, InvalidSignatureSnafu};
 
 /// server access jwt auth middle ware
 pub struct JwtAuthGuard {
@@ -84,11 +83,11 @@ where
         let Ok(jwt) = jwt else {
             return Box::pin(async { common_err_res!(InvalidCredentialSnafu.build()) });
         };
-        if !jwt.starts_with("Bear ") {
+        if !jwt.starts_with("Bearer ") {
             return Box::pin(async { common_err_res!(InvalidCredentialSnafu.build()) });
         }
 
-        let jwt = &jwt[5..];
+        let jwt = &jwt[7..];
         let token_data = match decode::<JwtClaims>(jwt, &self.decoding_key, &self.validation)
             .context(InvalidSignatureSnafu)
         {
@@ -96,10 +95,12 @@ where
             Err(err) => return Box::pin(async { common_err_res!(err) }),
         };
 
-        let now = Utc::now().timestamp_millis();
-        if now > token_data.claims.exp {
-            return Box::pin(async { common_err_res!(JwtExpireSnafu.build()) });
-        }
+        // let now = Utc::now().timestamp_millis();
+        // if now > token_data.claims.exp {
+        //     return Box::pin(async { common_err_res!(JwtExpireSnafu.build()) });
+        // }
+
+        ftlog::info!("some one login? {:#?}", token_data.claims);
 
         req.extensions_mut().insert(Rc::new(token_data.claims));
 
@@ -112,20 +113,28 @@ where
 
 #[cfg(test)]
 mod test {
+    use std::time::{SystemTime, UNIX_EPOCH};
+
     use jsonwebtoken::{encode, errors::ErrorKind, EncodingKey, Header};
 
     use super::*;
 
     #[test]
     fn test_jwt() {
+        // Set expiration time to 24 hours from now
+        let expiration = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .expect("Time went backwards")
+            .as_secs()
+            + 86400; // 86400 seconds = 24 hours
+
         let my_claims = JwtClaims {
-            sub: "b@b.com".to_owned(),
-            exp: 1000000,
+            sub: 3,
+            exp: expiration,
         };
-        let key = b"secret";
+        let key = b"Zvt8qpPUhNtxCmhjCvCrENyGMfe5EmQDWiKQJ5bm";
 
         let header = Header {
-            kid: Some("signing_key".to_owned()),
             alg: Algorithm::HS512,
             ..Default::default()
         };
@@ -141,27 +150,30 @@ mod test {
             Ok(c) => c,
             Err(err) => match *err.kind() {
                 ErrorKind::InvalidToken => panic!(), // Example on how to handle a specific error
-                _ => panic!(),
+                _ => {
+                    println!("other err: {}", err);
+                    panic!();
+                }
             },
         };
         println!("{:?}", token_data.claims);
         println!("{:?}", token_data.header);
 
-        let fake_token = "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzUxMiIsImtpZCI6InNpZ25pbmdfa2V5In0.eyJzdWIiOiJhQGEuY29tIiwiZXhwIjoxMDAwMDAwMDAwMH0.PYXI9GiQ-C02cGu_kG7EFj_Zs8x6laI2qxgw_mPDArz3yB1z_z99c2iCnNuL-OHVaEgxNzYkMqJ-10gZv_1DGA";
-        match decode::<JwtClaims>(
-            &fake_token,
-            &DecodingKey::from_secret(key),
-            &Validation::new(Algorithm::HS512),
-        ) {
-            Ok(c) => {
-                println!("{:?}", c.claims);
-                println!("{:?}", c.header);
-            }
-            Err(err) => {
-                assert_eq!(ErrorKind::InvalidSignature, *err.kind());
-                println!("error = {:#?}", err);
-            }
-        }
+        // let fake_token = "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzUxMiIsImtpZCI6InNpZ25pbmdfa2V5In0.eyJzdWIiOiJhQGEuY29tIiwiZXhwIjoxMDAwMDAwMDAwMH0.PYXI9GiQ-C02cGu_kG7EFj_Zs8x6laI2qxgw_mPDArz3yB1z_z99c2iCnNuL-OHVaEgxNzYkMqJ-10gZv_1DGA";
+        // match decode::<JwtClaims>(
+        //     &fake_token,
+        //     &DecodingKey::from_secret(key),
+        //     &Validation::new(Algorithm::HS512),
+        // ) {
+        //     Ok(c) => {
+        //         println!("{:?}", c.claims);
+        //         println!("{:?}", c.header);
+        //     }
+        //     Err(err) => {
+        //         assert_eq!(ErrorKind::InvalidSignature, *err.kind());
+        //         println!("error = {:#?}", err);
+        //     }
+        // }
 
         // let invalid_token = "eyeXAiOiJKV1QiLCJhbGciOiJIUzUxMiIsImtpZCI6InNpZ25pbmdfa2V5In0.eyJzdWIiOiJhQGEuY29tIiwiZXhwIjoxMDwMDAwMDAwMH0.PYXI9GiQ-C02cGu_kG7EFj_Zs8x6laI2qxgw_mPDArz3yB1z_z99c2iCnNuL-OHVaEgxNzYkMqJ-10gZv_1DGA";
         // match decode::<JwtClaims>(

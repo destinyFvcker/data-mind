@@ -218,6 +218,23 @@ mod test {
     }
 
     #[actix_web::test]
+    async fn insert_one_for_test() {
+        let mysql_conn = init_mysql_conn().await;
+
+        //
+        let user_repo_id = UserRepo::insert(
+            &mysql_conn,
+            "test@example-1122.com",
+            "you_know_what?",
+            Some("+8613727572856"),
+            "destinyFvcker",
+            "test",
+        )
+        .await
+        .unwrap();
+    }
+
+    #[actix_web::test]
     async fn test_user_repo() {
         let mysql_conn = init_mysql_conn().await;
 

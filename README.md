@@ -2,6 +2,11 @@
 
 AI-powered Data Middleware
 
+## 钉钉报警机器人接入
+
+1. 关于自定义机器人发送群消息，见[文档a](https://open.dingtalk.com/document/orgapp/custom-robots-send-group-messages)
+2. 关于自定义机器人安全设置，见[文档b](https://open.dingtalk.com/document/robots/customize-robot-security-settings)
+
 ## monitor
 
 查看现有调度任务

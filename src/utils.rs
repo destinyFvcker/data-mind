@@ -11,7 +11,7 @@ use rskafka::{
     },
     BackoffConfig,
 };
-use sqlx::{Executor, MySqlPool};
+use sqlx::{mysql::MySqlPoolOptions, Executor, MySqlPool};
 
 pub const AK_TOOLS_BASE_URL: &'static str = "http://127.0.0.1:8080/api/public";
 #[cfg(test)]
@@ -32,6 +32,18 @@ pub(super) static TEST_HTTP_CLIENT: std::sync::LazyLock<reqwest::Client> =
             .build()
             .unwrap()
     });
+/// 获取一个测试环境的mysql数据连接池
+pub async fn get_test_mysql_pool() -> MySqlPool {
+    let mysql = MySqlPoolOptions::new()
+        .acquire_timeout(Duration::from_secs(10))
+        .connect(&format!(
+            "mysql://{}:{}@{}:{}/{}",
+            "root", "rootpassword", "127.0.0.1", 3306, "data_mind"
+        ))
+        .await
+        .unwrap();
+    mysql
+}
 
 /// 通过指定的数据字典项拼接出实际的aktools目标数据url
 pub fn with_base_url(path: &str) -> String {

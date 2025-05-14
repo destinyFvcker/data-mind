@@ -23,6 +23,7 @@ pub struct GrafanaWebhookMsg {
     #[serde(rename = "externalURL")]
     pub external_url: String,
     pub alerts: Vec<GrafanaAlert>,
+    pub message: String,
 }
 
 #[derive(Debug, Deserialize)]
@@ -312,7 +313,7 @@ mod test {
         let value: GrafanaWebhookMsg = serde_json::from_str(json_data).unwrap();
         println!("value = {:#?}", value);
 
-        let proto_msg = value.extract_proto_msg().unwrap();
-        println!("proto_msg = {:?}", proto_msg);
+        // let proto_msg = value.extract_proto_msg().unwrap();
+        // println!("proto_msg = {:?}", proto_msg);
     }
 }

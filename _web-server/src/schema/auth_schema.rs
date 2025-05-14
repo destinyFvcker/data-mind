@@ -5,11 +5,11 @@ use utoipa::{IntoParams, ToSchema};
 /// JWT的有效负载部分定义
 #[derive(Debug, Serialize, Deserialize)]
 pub struct JwtClaims {
-    /// 主题，即用户标识
-    pub sub: String,
+    /// 主题，即用户标识，这里使用mysql的主键类型
+    pub sub: u64,
     /// 过期时间（Expiry time），一个毫秒等级的时间戳，
     /// 用于设置 token 的过期时间。
-    pub exp: i64,
+    pub exp: u64,
 }
 
 /// 在从当前服务重定向到github OAuth界面需要的一个不可猜测的随机字符串，
