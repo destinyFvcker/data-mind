@@ -101,9 +101,7 @@ async fn main() {
             .app_data(Data::new(reqwest_client.clone()))
             .app_data(Data::from(shared_config.clone()))
             .service(
-                utoipa_actix_web::scope("/api")
-                    .configure(handler::quant_data::config())
-                    .wrap(JwtAuthGuard::new(shared_config.jwt_secret_key.clone())),
+                utoipa_actix_web::scope("/api").configure(handler::quant_data::config()), // .wrap(JwtAuthGuard::new(shared_config.jwt_secret_key.clone())),
             )
             .service(
                 utoipa_actix_web::scope("/auths")
