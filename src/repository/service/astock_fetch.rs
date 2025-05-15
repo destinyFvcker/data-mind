@@ -266,22 +266,32 @@ LIMIT 0, 10
 
     pub async fn fetch_all(ch_client: &clickhouse::Client) -> anyhow::Result<Vec<Self>> {
         let sql = r#"
+WITH latest_records AS (
+    SELECT
+        code,
+        MAX(date) AS max_date
+    FROM stock_zh_a_hist
+    WHERE adj_type = 0
+    GROUP BY code
+)
 SELECT
-    code,
-    argMax(open, date) AS open,
-    argMax(close, date) AS close,
-    argMax(high, date) AS high,
-    argMax(low, date) AS low,
-    argMax(trading_volume, date) AS trading_volume,
-    argMax(trading_value, date) AS trading_value,
-    argMax(amplitude, date) AS amplitude,
-    argMax(turnover_rate, date) AS turnover_rate,
-    argMax(change_percentage, date) AS change_percentage,
-    argMax(change_amount, date) AS change_amount,
-    max(date) AS latest_date
-FROM stock_zh_a_hist
-GROUP BY code
-ORDER BY code ASC
+    s.code,
+    argMax(s.open, s.ts) AS open,
+    argMax(s.close, s.ts) AS close,
+    argMax(s.high, s.ts) AS high,
+    argMax(s.low, s.ts) AS low,
+    argMax(s.trading_volume, s.ts) AS trading_volume,
+    argMax(s.trading_value, s.ts) AS trading_value,
+    argMax(s.amplitude, s.ts) AS amplitude,
+    argMax(s.turnover_rate, s.ts) AS turnover_rate,
+    argMax(s.change_percentage, s.ts) AS change_percentage,
+    argMax(s.change_amount, s.ts) AS change_amount,
+    s.date AS latest_date
+FROM stock_zh_a_hist s
+JOIN latest_records l ON s.code = l.code AND s.date = l.max_date
+WHERE s.adj_type = 0
+GROUP BY s.code, s.date
+ORDER BY s.code ASC
         "#;
 
         let data = ch_client.query(sql).fetch_all().await?;

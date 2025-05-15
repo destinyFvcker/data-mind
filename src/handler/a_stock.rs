@@ -41,7 +41,7 @@ pub fn mount_astock_scope(config: &mut ServiceConfig) {
         ("stock_id", description = "需要获取个股信息对应的股票代码", example = "603777")
     ),
     responses(
-        (status = 200, description = "成功获取个股信息", body = AkStockIndividualInfoEm),
+        (status = 200, description = "成功获取个股信息", body = OkRes<AkStockIndividualInfoEm>),
         (status = 404, description = "对应个股信息不存在", body = OrdinError),
         (status = 401, description = "没有访问权限", body = OrdinError),
         (status = 500, description = "发生服务器内部错误", body = OrdinError),
