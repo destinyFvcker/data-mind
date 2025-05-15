@@ -128,6 +128,18 @@ async fn main() {
                                 NamedFile::open_async(format!("{}/index.html", config.server.fe))
                                     .await?;
                             let res = file.into_response(&req);
+
+                            // let path = req.path();
+                            // if path.ends_with(".js") {
+                            //     // 为 JavaScript 文件设置正确的 MIME 类型
+                            //     res.headers_mut().insert(
+                            //         actix_web::http::header::CONTENT_TYPE,
+                            //         actix_web::http::header::HeaderValue::from_static(
+                            //             "application/javascript",
+                            //         ),
+                            //     );
+                            // }
+
                             Ok(ServiceResponse::new(req, res))
                         }
                     })),
