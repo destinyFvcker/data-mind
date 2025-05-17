@@ -150,7 +150,7 @@ async fn stock_zh_index_daily_kline(
         LimitQueryWithCode
     ),
     responses(
-        (status = 200, description = "成功获取指定的指数代码的移动平均线数据", body = Vec<serv_aindex::StockZhIndexDailyMA>),
+        (status = 200, description = "成功获取指定的指数代码的移动平均线数据", body = OkRes<Vec<serv_aindex::StockZhIndexDailyMA>>),
         (status = 404, description = "对应个股信息不存在", body = OrdinError),
         (status = 401, description = "没有访问权限", body = OrdinError),
         (status = 500, description = "发生服务器内部错误", body = OrdinError),
