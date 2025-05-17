@@ -9,7 +9,7 @@ use utoipa::ToSchema;
 #[derive(Debug, Serialize, ToSchema, Deserialize, Row)]
 pub struct StockNewsMainCx {
     /// 新闻的正式发布时间，即新闻内容原文在财新网等发布的时间。
-    #[serde(with = "clickhouse::serde::chrono::datetime64::millis")]
+    #[serde(deserialize_with = "clickhouse::serde::chrono::datetime64::millis::deserialize")]
     pub pub_time: DateTime<Utc>,
     /// 新闻的摘要内容，对新闻正文的简要概括，便于快速了解新闻主旨。
     pub summary: String,
