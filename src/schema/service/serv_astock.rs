@@ -120,6 +120,41 @@ impl StockDailyPagin {
     }
 }
 
+/// 东方财富网-数据中心-资金流向-沪深港通资金流向-沪深港通历史数据，  
+/// 分为南向北向
+#[derive(Debug, Serialize, Deserialize, Row, ToSchema)]
+pub struct StockHsgtHistEm {
+    /// 资金流动方向(0代表北向，1代表南向)
+    // pub flow_dir: FlowDirection,
+    /// 买入成交额，单位：亿元
+    pub buy_amount: f64,
+    /// 卖出成交额，单位：亿元
+    pub sell_amount: f64,
+    /// 历史累计净买额，单位：万亿元
+    pub historical_net_buy_amount: f64,
+    /// 当日余额，单位：亿元
+    pub daily_balance: f64,
+    /// 当日成交净买额，单位：亿元
+    pub daily_net_buy_amount: f64,
+    /// 当日资金流入，单位：亿元
+    pub daily_inflow: f64,
+    /// 持股市值，单位：元
+    pub holding_market_value: f64,
+    /// 沪深300指数点位
+    pub hs300_index: f64,
+    /// 沪深300指数涨跌幅，单位：%
+    pub hs300_change_percent: f64,
+    /// 领涨股名称
+    pub leading_stock_name: String,
+    /// 领涨股代码，例如 "600198.SH"
+    pub leading_stock_code: String,
+    /// 领涨股涨跌幅，单位：%
+    pub leading_stock_change_percent: f64,
+    /// 日期，格式："YYYY-MM-DD"
+    #[serde(deserialize_with = "clickhouse::serde::chrono::date::deserialize")]
+    pub date: NaiveDate,
+}
+
 #[cfg(test)]
 mod test {
     use crate::utils::TEST_CH_CLIENT;

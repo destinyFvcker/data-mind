@@ -1,9 +1,10 @@
 use crate::{
-    repository::akshare::StockAdjustmentType,
+    repository::akshare::{FlowDirection, StockAdjustmentType},
     schema::{
         self,
         service::serv_astock::{self, StockDailyTradingVolume},
     },
+    utils::limit_or_not,
 };
 
 /// 判断一个指定的stock code是否存在
@@ -299,6 +300,64 @@ ORDER BY s.code ASC
     }
 }
 
+impl serv_astock::StockHsgtHistEm {
+    pub async fn fetch_with_limit(
+        ch_client: &clickhouse::Client,
+        flow_dir: FlowDirection,
+        limit_days: i32,
+    ) -> anyhow::Result<Vec<Self>> {
+        let sql = r#"
+SELECT
+    buy_amount,
+    sell_amount,
+    historical_net_buy_amount,
+    daily_balance,
+    daily_net_buy_amount,
+    daily_inflow,
+    holding_market_value,
+    hs300_index,
+    hs300_change_percent,
+    leading_stock_name,
+    leading_stock_code,
+    leading_stock_change_percent,
+    date
+FROM
+(
+    SELECT
+        argMax(buy_amount, ts) AS buy_amount,
+        argMax(sell_amount, ts) AS sell_amount,
+        argMax(historical_net_buy_amount, ts) AS historical_net_buy_amount,
+        argMax(daily_balance, ts) AS daily_balance,
+        argMax(daily_net_buy_amount, ts) AS daily_net_buy_amount,
+        argMax(daily_inflow, ts) AS daily_inflow,
+        argMax(holding_market_value, ts) AS holding_market_value,
+        argMax(hs300_index, ts) AS hs300_index,
+        argMax(hs300_change_percent, ts) AS hs300_change_percent,
+        argMax(leading_stock_name, ts) AS leading_stock_name,
+        hs300_change_percent,
+        argMax(leading_stock_code, ts) AS leading_stock_code,
+        argMax(leading_stock_change_percent, ts) AS leading_stock_change_percent,
+        date
+    FROM stock_hsgt_hist_em
+    WHERE flow_dir = ?
+    GROUP BY date
+    ORDER BY date DESC
+    LIMIT ?
+) AS sub
+ORDER BY date ASC
+        "#;
+
+        let limit = limit_or_not(limit_days);
+        let data = ch_client
+            .query(sql)
+            .bind(flow_dir)
+            .bind(limit)
+            .fetch_all()
+            .await?;
+        Ok(data)
+    }
+}
+
 #[cfg(test)]
 mod test {
     use crate::{repository::akshare::StockAdjustmentType, utils::TEST_CH_CLIENT};
@@ -353,5 +412,17 @@ mod test {
             .await
             .unwrap());
         assert!(!is_stock_code_exists(&TEST_CH_CLIENT, "0w-1").await.unwrap());
+    }
+
+    #[tokio::test]
+    async fn test_fetch_hsgt() {
+        let data = serv_astock::StockHsgtHistEm::fetch_with_limit(
+            &TEST_CH_CLIENT,
+            FlowDirection::Northbound,
+            90,
+        )
+        .await
+        .unwrap();
+        println!("{:#?}", data);
     }
 }

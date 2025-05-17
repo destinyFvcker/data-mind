@@ -7,6 +7,7 @@ use crate::background::github_state::GithubStateCache;
 mod error;
 mod github;
 pub mod jwt_mw;
+mod plain;
 
 /// Run external configuration as part of the application building process
 pub fn config(github_state: Data<GithubStateCache>) -> impl FnOnce(&mut ServiceConfig) {

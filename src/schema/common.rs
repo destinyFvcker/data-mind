@@ -26,9 +26,11 @@ pub struct OkRes<T: Serialize + Debug + ToSchema> {
     #[schema(example = "登陆成功，欢迎来到data-mind!👏")]
     pub message: String,
     /// 📚 响应体数据部分
-    #[schema(example = json!("{"field" = "hello world!"}"))]
+    #[schema(nullable, example = json!("{"field" = "hello world!"}"))]
     pub data: T,
 }
+
+pub type EmptyOkRes = OkRes<()>;
 
 impl<T: Serialize + Debug + ToSchema> OkRes<T> {
     pub fn from_with_msg(msg: String, data: T) -> Self {

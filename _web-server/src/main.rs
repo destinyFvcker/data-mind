@@ -99,10 +99,21 @@ async fn main() {
             .app_data(Data::new(clickhouse.clone()))
             .app_data(Data::new(mysql.clone()))
             .app_data(Data::new(reqwest_client.clone()))
-            .app_data(Data::from(shared_config.clone()))
-            .service(
-                utoipa_actix_web::scope("/api").configure(handler::quant_data::config()), // .wrap(JwtAuthGuard::new(shared_config.jwt_secret_key.clone())),
-            )
+            .app_data(Data::from(shared_config.clone()));
+
+        app = if local_dev == "1" {
+            app.service(utoipa_actix_web::scope("/api").configure(handler::quant_data::config()))
+        } else {
+            // TODO 完成鉴权系统
+            // app.service(
+            //     utoipa_actix_web::scope("/api")
+            //         .configure(handler::quant_data::config())
+            //         .wrap(JwtAuthGuard::new(shared_config.jwt_secret_key.clone())),
+            // )
+            app.service(utoipa_actix_web::scope("/api").configure(handler::quant_data::config()))
+        };
+
+        let mut app = app
             .service(
                 utoipa_actix_web::scope("/auths")
                     .configure(handler::auth::config(Data::from(github_state.clone()))),
@@ -128,17 +139,6 @@ async fn main() {
                                 NamedFile::open_async(format!("{}/index.html", config.server.fe))
                                     .await?;
                             let res = file.into_response(&req);
-
-                            // let path = req.path();
-                            // if path.ends_with(".js") {
-                            //     // 为 JavaScript 文件设置正确的 MIME 类型
-                            //     res.headers_mut().insert(
-                            //         actix_web::http::header::CONTENT_TYPE,
-                            //         actix_web::http::header::HeaderValue::from_static(
-                            //             "application/javascript",
-                            //         ),
-                            //     );
-                            // }
 
                             Ok(ServiceResponse::new(req, res))
                         }

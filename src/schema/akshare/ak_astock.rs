@@ -1,7 +1,7 @@
 //! AKShare 股票数据
 use clickhouse::Row;
 use serde::{Deserialize, Deserializer, Serialize};
-use serde_json::Value;
+use serde_json::{Number, Value};
 use utoipa::ToSchema;
 
 use crate::utils::with_base_url;
@@ -873,6 +873,12 @@ impl AkStockIndividualInfoEm {
         // 2️⃣ 转换为 Map<String, Value>
         let mut map = serde_json::Map::new();
         for entry in list {
+            if entry.item == "最新" {
+                if let Value::String(_) = entry.value {
+                    map.insert(entry.item, Value::Number(Number::from_f64(-1f64).unwrap()));
+                    continue;
+                }
+            }
             map.insert(entry.item, entry.value);
         }
 

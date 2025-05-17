@@ -223,7 +223,7 @@ async fn test_stock_news_em() {
 async fn test_stock_individual_info_em() {
     let res: Vec<Value> = TEST_HTTP_CLIENT
         .get(with_base_url("/stock_individual_info_em"))
-        .query(&[("symbol", "60377")])
+        .query(&[("symbol", "000151")])
         .send()
         .await
         .unwrap()

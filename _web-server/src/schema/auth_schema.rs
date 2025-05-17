@@ -21,17 +21,6 @@ pub struct GithubState {
     pub state: String,
 }
 
-/// 从github OAuth界面重定向回服务时github请求携带的请求体
-#[derive(Debug, Deserialize, ToSchema, IntoParams)]
-pub struct GithubCallback {
-    /// 收到的作为对用户同意使用github进行登陆的响应的代码。
-    #[schema(example = "A.u2r=n?N^Ea3Y5.?rLzF+U0ce")]
-    pub code: String,
-    /// 不可猜测的随机字符串，用于防止跨站请求伪造攻击。
-    #[schema(example = "VrEaJ191gmyuhB5CKq0x")]
-    pub state: String,
-}
-
 /// 从github接收到的访问令牌响应
 #[derive(Debug, Deserialize)]
 pub struct GithubTokenRes {
@@ -57,6 +46,8 @@ pub struct UserIdentitySchema {
     pub provider: String,
     pub provider_user_id: String,
 }
+
+// ------------------------------------------------------------------------------
 
 #[derive(Debug, Deserialize)]
 #[serde(untagged)]

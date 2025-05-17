@@ -4,7 +4,10 @@ use actix_web::{
     get,
     web::{self, Data, Json},
 };
+use data_mind::schema::common::{EmptyOkRes, OkRes};
+use serde::Deserialize;
 use snafu::{ensure, ResultExt};
+use utoipa::{IntoParams};
 use utoipa_actix_web::{scope, service_config::ServiceConfig};
 
 use crate::{
@@ -27,27 +30,42 @@ pub(super) fn mount_github_scope(config: &mut ServiceConfig, state: Data<GithubS
             status = 200, 
             description = "在从当前服务重定向到github OAuth界面需要的一个不可猜测的随机字符串，\
                             用于防止跨站请求伪造攻击", 
-            body = auth_schema::GithubState 
+            body = OkRes<auth_schema::GithubState> 
         )
     )
 )]
 #[get("/state")]
-async fn get_state(github_state: Data<GithubStateCache>) -> Json<auth_schema::GithubState> {
-    Json(auth_schema::GithubState {
+async fn get_state(github_state: Data<GithubStateCache>) -> Json<OkRes<auth_schema::GithubState>> {
+    let data = auth_schema::GithubState {
         state: github_state.new_state(),
-    })
+    };
+    let res = OkRes::from_with_msg("获取成功".to_string(), data);
+    Json(res)
+}
+/// 从github OAuth界面重定向回服务时github请求携带的请求体
+#[derive(Debug, Deserialize, IntoParams)]
+pub struct GithubCallback {
+    /// 收到的作为对用户同意使用github进行登陆的响应的代码。
+    #[param(example = "A.u2r=n?N^Ea3Y5.?rLzF+U0ce")]
+    pub code: String,
+    /// 不可猜测的随机字符串，用于防止跨站请求伪造攻击。
+    #[param(example = "VrEaJ191gmyuhB5CKq0x")]
+    pub state: String,
 }
 
 #[utoipa::path(
     tag = super::API_TAG,
     params (
-        auth_schema::GithubCallback
+        GithubCallback
     ),
     responses(
-        (status = 200, description = "empty body with jwt token in the header",
+        (
+            status = 200, 
+            description = "empty body with jwt token in the header",
             headers(
                 ("Authorization" = String, description = "New jwt token")
-            )
+            ),
+            body = EmptyOkRes
         ),
         (status = 404, description = "github state not found", body = AuthError),
         (status = 500, description = "github api fail", body = AuthError),
@@ -55,11 +73,11 @@ async fn get_state(github_state: Data<GithubStateCache>) -> Json<auth_schema::Gi
 )]
 #[get("/callback")]
 async fn github_callback(
-    callback_body: web::Query<auth_schema::GithubCallback>,
+    callback_body: web::Query<GithubCallback>,
     state_cache: Data<GithubStateCache>,
     reqwest_client: Data<reqwest::Client>,
     init_config: Data<InitConfig>,
-) -> Result<(), AuthError> {
+) -> Result<Json<EmptyOkRes>, AuthError> {
     ensure!(
         &state_cache.verify_state(&callback_body.state),
         GithubStateNotFoundSnafu
@@ -110,7 +128,8 @@ async fn github_callback(
     // TODO 从数据库之中找到对应的用户信息 or 直接创建新用户
     ftlog::debug!("github user info = {:#?}", github_user_info);
 
-    Ok(())
+    let res = OkRes::from_with_msg("github oauth登录成功".to_owned(), ());
+    Ok(Json(res))
 }
 
 #[cfg(test)]
@@ -140,5 +159,12 @@ mod test {
             .context(GithubApiFailSnafu).unwrap();
 
         println!("{:?}", github_user_info);
+    }
+
+    #[test]
+    fn test_serde_unit() {
+        let unit = ();
+        let result = serde_json::to_string(&unit).unwrap();
+        println!("{result}");
     }
 }

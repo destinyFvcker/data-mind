@@ -233,7 +233,7 @@ struct PaginQuery {
         PaginQuery
     ),
     responses(
-        (status = 200, description = "成功分页获取对应交易日的交易信息", body = Vec<serv_aindex::StockZhIndexDailyPagin>),
+        (status = 200, description = "成功分页获取对应交易日的交易信息", body = OkRes<Vec<serv_aindex::StockZhIndexDailyPagin>>),
         (status = 401, description = "没有访问权限", body = OrdinError),
         (status = 500, description = "发生服务器内部错误", body = OrdinError), 
     )

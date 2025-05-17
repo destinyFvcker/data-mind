@@ -10,7 +10,10 @@ use utoipa::IntoParams;
 use utoipa_actix_web::{scope, service_config::ServiceConfig};
 
 use crate::{
-    repository::{akshare::StockAdjustmentType, service::is_stock_code_exists},
+    repository::{
+        akshare::{FlowDirection, StockAdjustmentType},
+        service::is_stock_code_exists,
+    },
     schema::{
         akshare::{AkStockIndividualInfoEm, AkStockZhAStEm},
         common::OkRes,
@@ -30,7 +33,8 @@ pub fn mount_astock_scope(config: &mut ServiceConfig) {
             .service(fetch_daily_kline)
             .service(fetch_daily_trading_volume)
             .service(fetch_daily_indicator)
-            .service(fetch_astock_daily_pagin),
+            .service(fetch_astock_daily_pagin)
+            .service(fetch_stock_hsgt_hist_em),
     );
 }
 
@@ -310,5 +314,56 @@ async fn fetch_astock_daily_pagin(
         .context(InternalServerSnafu)?;
 
     let res = OkRes::from_with_msg("成功获取最新交易日A股日频分页数据".to_owned(), data);
+    Ok(Json(res))
+}
+
+/// 沪深港通资金流向query请求结构定义
+#[derive(Debug, Deserialize, IntoParams)]
+struct HsgtQuery {
+    /// 资金流动方向, choice of "0"(北向), "1"(南向)
+    #[param(example = "1")]
+    flow_type: String,
+    /// 限定返回历史数据从最新数据开始倒推的天数，-1返回所有数据
+    #[param(example = 30)]
+    limit_days: i32,
+}
+
+/// 获取沪深港通资金流向数据
+#[utoipa::path(
+    tag = API_TAG,
+    params(
+        HsgtQuery
+    ),
+    responses(
+        (status = 200, description = "成功获取指定的资金流向-沪深港通资金流向-沪深港通历史数据", body = OkRes<Vec<StockDailyPagin>>),
+        (status = 401, description = "没有访问权限", body = OrdinError),
+        (status = 500, description = "发生服务器内部错误", body = OrdinError),
+    )
+)]
+#[get("/stock_hsgt_hist")]
+async fn fetch_stock_hsgt_hist_em(
+    query: web::Query<HsgtQuery>,
+    ch_client: web::Data<clickhouse::Client>,
+) -> Result<Json<OkRes<Vec<serv_astock::StockHsgtHistEm>>>, OrdinError> {
+    let flow_type: FlowDirection = serde_json::from_str(&query.flow_type).map_err(|err| {
+        BadReqSnafu {
+            desc: format!(
+                r#"err: {}, 资金流动方向, choice of "0"(北向), "1"(南向), 其余值为非法"#,
+                err
+            ),
+        }
+        .build()
+    })?;
+
+    let data =
+        serv_astock::StockHsgtHistEm::fetch_with_limit(&ch_client, flow_type, query.limit_days)
+            .await
+            .context(InternalServerSnafu)?;
+
+    let res = OkRes::from_with_msg(
+        "成功获取指定的资金流向-沪深港通资金流向-沪深港通历史数据".to_owned(),
+        data,
+    );
+
     Ok(Json(res))
 }
