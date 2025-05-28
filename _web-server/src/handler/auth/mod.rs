@@ -2,7 +2,9 @@ use actix_web::web::Data;
 use github::mount_github_scope;
 use utoipa_actix_web::service_config::ServiceConfig;
 
-use crate::background::github_state::GithubStateCache;
+use crate::{
+    background::github_state::GithubStateCache, handler::auth::plain::mount_plain_auth_scope,
+};
 
 mod error;
 mod github;
@@ -13,6 +15,7 @@ mod plain;
 pub fn config(github_state: Data<GithubStateCache>) -> impl FnOnce(&mut ServiceConfig) {
     |config: &mut ServiceConfig| {
         mount_github_scope(config, github_state);
+        mount_plain_auth_scope(config);
     }
 }
 

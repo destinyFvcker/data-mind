@@ -24,13 +24,23 @@ pub struct OkRes<T: Serialize + Debug + ToSchema> {
     pub code: u16,
     /// 💬 正确响应描述性文本
     #[schema(example = "登陆成功，欢迎来到data-mind!👏")]
-    pub message: String,
+    pub message: String, // FIXME 说实话这里的message应该切换成Cow来提升性能
     /// 📚 响应体数据部分
     #[schema(nullable, example = json!("{"field" = "hello world!"}"))]
     pub data: T,
 }
 
 pub type EmptyOkRes = OkRes<()>;
+
+impl EmptyOkRes {
+    pub fn from_msg(msg: String) -> Self {
+        Self {
+            code: 200,
+            message: msg,
+            data: (),
+        }
+    }
+}
 
 impl<T: Serialize + Debug + ToSchema> OkRes<T> {
     pub fn from_with_msg(msg: String, data: T) -> Self {
@@ -49,7 +59,7 @@ pub struct ErrRes<E: ErrorExt> {
     /// ❌ 错误响应 http 状态码
     pub code: u16,
     /// 💬 错误响应描述性文本
-    pub message: String,
+    pub message: String, // FIXME 说实话这里的message应该切换成Cow来提升性能
     #[serde(skip)]
     pub error: E,
 }

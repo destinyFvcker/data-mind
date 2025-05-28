@@ -22,7 +22,7 @@ pub fn web_hook_api() -> Route {
 #[handler]
 async fn grafana_alarm_hook(
     Json(grafana_msg): Json<GrafanaWebhookMsg>,
-    _kafka_client: Data<&Arc<PartitionClient>>,
+    kafka_client: Data<&Arc<PartitionClient>>,
     ch_client: Data<&clickhouse::Client>,
 ) -> poem::Result<()> {
     ftlog::info!(target: "webhook::log", "grafana_msg = {:?}", grafana_msg);

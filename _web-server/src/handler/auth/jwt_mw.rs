@@ -1,6 +1,9 @@
 //! json web token auth middleware
 
-use std::rc::Rc;
+use std::{
+    time::{SystemTime, UNIX_EPOCH},
+    u64,
+};
 
 use crate::{handler::auth::error::JwtNotFoundSnafu, schema::auth_schema::JwtClaims};
 use actix_web::{
@@ -14,7 +17,7 @@ use futures::{
     future::{ready, LocalBoxFuture, Ready},
     FutureExt, TryFutureExt,
 };
-use jsonwebtoken::{decode, Algorithm, DecodingKey, Validation};
+use jsonwebtoken::{decode, Algorithm, DecodingKey, EncodingKey, Header, Validation};
 use snafu::ResultExt;
 
 use super::error::{InvalidCredentialSnafu, InvalidSignatureSnafu};
@@ -56,6 +59,9 @@ pub struct JwtAuthMiddleware<S> {
     decoding_key: DecodingKey,
     validation: Validation,
 }
+
+#[derive(Debug, Clone, Copy)]
+pub struct UserIdFromJwt(pub u64);
 
 impl<S, B> Service<ServiceRequest> for JwtAuthMiddleware<S>
 where
@@ -102,13 +108,32 @@ where
 
         ftlog::info!("some one login? {:#?}", token_data.claims);
 
-        req.extensions_mut().insert(Rc::new(token_data.claims));
+        req.extensions_mut()
+            .insert(UserIdFromJwt(token_data.claims.sub));
 
         self.service
             .call(req)
             .map_ok(ServiceResponse::map_into_left_body)
             .boxed_local()
     }
+}
+
+pub fn gen_jwt(sub: u64, key: &str) -> jsonwebtoken::errors::Result<String> {
+    // Set expiration time to 24 hours from now
+    let exp = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .expect("Time went backwards")
+        .as_secs()
+        + 86400; // 86400 seconds = 24 hours
+
+    let claims = JwtClaims { sub, exp };
+    let header = Header {
+        alg: Algorithm::HS512,
+        ..Default::default()
+    };
+
+    let token = jsonwebtoken::encode(&header, &claims, &EncodingKey::from_secret(key.as_bytes()))?;
+    Ok(token)
 }
 
 #[cfg(test)]

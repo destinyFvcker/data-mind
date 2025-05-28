@@ -18,6 +18,8 @@ pub enum Error {
         email_address
     ))]
     UserPasswordMismatch { email_address: String },
+    #[snafu(display("user exists, 请进行登录"))]
+    UserExist,
 
     // --- jwt auth error
     #[snafu(display("The session has expired, please log in again"))]
@@ -31,6 +33,11 @@ pub enum Error {
         #[snafu(source)]
         error: jsonwebtoken::errors::Error, // kind == InvalidSignature
     },
+    #[snafu(display("encode jwt 出现错误"))]
+    EncodeJwt {
+        #[snafu(source)]
+        error: jsonwebtoken::errors::Error, // kind == InvalidSignature
+    },
 
     // --- github oauth error
     #[snafu(display("Github state should be there when login throght github oauth"))]
@@ -39,6 +46,15 @@ pub enum Error {
     GithubApiFail {
         #[snafu(source)]
         error: reqwest::Error,
+        #[snafu(implicit)]
+        location: Location,
+    },
+
+    // --- db access errir
+    #[snafu(display("Server Access db error."))]
+    DbErr {
+        #[snafu(source)]
+        error: sqlx::error::Error,
         #[snafu(implicit)]
         location: Location,
     },
@@ -57,7 +73,10 @@ impl ErrorExt for Error {
             Error::GithubStateNotFound | Error::JwtNotFound => {
                 common_code::CommonCode::AccessDenied
             }
-            Error::GithubApiFail { .. } => common_code::CommonCode::Internal,
+            Error::GithubApiFail { .. } | Error::DbErr { .. } | Error::EncodeJwt { .. } => {
+                common_code::CommonCode::Internal
+            }
+            Error::UserExist => common_code::CommonCode::ResourceConflict,
         }
     }
 

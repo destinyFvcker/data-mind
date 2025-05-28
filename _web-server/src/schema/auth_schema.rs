@@ -21,6 +21,25 @@ pub struct GithubState {
     pub state: String,
 }
 
+/// 用户基本信息
+#[derive(Debug, Deserialize)]
+pub struct UserSchema {
+    pub email: String,
+    pub password: String,
+    pub mobile: Option<String>,
+    pub nickname: String,
+    pub avatar_url: String,
+}
+
+/// 用户第三方身份验证基本信息
+#[derive(Debug, Deserialize)]
+pub struct UserIdentitySchema {
+    pub provider: String,
+    pub provider_user_id: String,
+}
+
+// ----------- GitHub 相关网络请求schema ------------
+
 /// 从github接收到的访问令牌响应
 #[derive(Debug, Deserialize)]
 pub struct GithubTokenRes {
@@ -31,23 +50,6 @@ pub struct GithubTokenRes {
     /// 令牌类型
     pub token_type: String,
 }
-
-#[derive(Debug, Deserialize)]
-pub struct UserSchema {
-    pub email: String,
-    pub password: String,
-    pub mobile: Option<String>,
-    pub nickname: String,
-    pub avatar_url: String,
-}
-
-#[derive(Debug, Deserialize)]
-pub struct UserIdentitySchema {
-    pub provider: String,
-    pub provider_user_id: String,
-}
-
-// ------------------------------------------------------------------------------
 
 #[derive(Debug, Deserialize)]
 #[serde(untagged)]

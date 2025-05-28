@@ -63,7 +63,8 @@ async fn main() {
             (name = auth::API_TAG, description = auth::API_DESC),
             (name = indicator::API_TAG, description = indicator::API_DESC),
             (name = news::API_TAG, description = news::API_DESC),
-            (name = a_stock::API_TAG, description = a_stock::API_DESC)
+            (name = a_stock::API_TAG, description = a_stock::API_DESC),
+            (name = manage::API_TAG, description = manage::API_DESC)
         ),
         servers(
             (url = "http://localhost:8800", description = "本地测试环境"),
@@ -101,16 +102,14 @@ async fn main() {
             .app_data(Data::new(reqwest_client.clone()))
             .app_data(Data::from(shared_config.clone()));
 
-        app = if local_dev == "1" {
-            app.service(utoipa_actix_web::scope("/api").configure(handler::quant_data::config()))
+        let api_scope = utoipa_actix_web::scope("/api")
+            .configure(handler::quant_data::config())
+            .configure(handler::manage::config());
+
+        app = if local_dev != "1" {
+            app.service(api_scope.wrap(JwtAuthGuard::new(shared_config.jwt_secret_key.clone())))
         } else {
-            // TODO 完成鉴权系统
-            // app.service(
-            //     utoipa_actix_web::scope("/api")
-            //         .configure(handler::quant_data::config())
-            //         .wrap(JwtAuthGuard::new(shared_config.jwt_secret_key.clone())),
-            // )
-            app.service(utoipa_actix_web::scope("/api").configure(handler::quant_data::config()))
+            app.service(api_scope)
         };
 
         let mut app = app

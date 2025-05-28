@@ -2,6 +2,12 @@
 
 use serde::{Deserialize, Serialize};
 
+#[derive(Debug, Deserialize)]
+pub struct DingTalkRobotRes {
+    pub errcode: String,
+    pub errmsg: String,
+}
+
 /// 钉钉webhook报警机器人的消息类型
 #[derive(Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]

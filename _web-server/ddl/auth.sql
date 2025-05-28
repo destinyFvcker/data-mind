@@ -5,7 +5,7 @@ CREATE TABLE IF NOT EXISTS users (
     password_hash VARCHAR(255),  -- TODO 本地注册的密码哈希（第三方登录可为空）
     mobile VARCHAR(20) NULL DEFAULT NULL,
     
-    nickname VARCHAR(50),
+    nickname VARCHAR(50) NOT NULL,
     avatar_url VARCHAR(255),
 
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -31,8 +31,8 @@ CREATE TABLE IF NOT EXISTS user_identities (
 CREATE TABLE IF NOT EXISTS dingtalk_robots (
     id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     user_id BIGINT UNSIGNED UNIQUE,
-    webhook_address VARCHAR(255) NOT NULL,
-    key_signature VARCHAR(100) NOT NULL,
+    webhook_address VARCHAR(255) NULL DEFAULT NULL,
+    key_signature VARCHAR(100) NULL DEFAULT NULL,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     

@@ -1,7 +1,7 @@
 #![allow(unused)]
 use chrono::NaiveDateTime;
 use serde::{Deserialize, Serialize};
-use sqlx::{prelude::*, Error, MySqlPool};
+use sqlx::{prelude::*, Error, MySql, MySqlPool};
 
 pub const GITHUB_PROVIDER: &'static str = "github";
 pub const WECHAT_PROVICER: &'static str = "wechat";
@@ -40,20 +40,19 @@ impl UserRepo {
     }
 
     /// 通过邮箱密码验证该用户是否存在
-    pub async fn find_by_email(
+    pub async fn verify_by_plain(
         pool: &MySqlPool,
         user_email: &str,
-        password: String,
-    ) -> Result<bool, Error> {
-        let exists: bool = sqlx::query_scalar(
-            "SELECT EXISTS(SELECT 1 FROM usersWHERE email = ? AND password_hash = ?)",
-        )
-        .bind(user_email)
-        .bind(password)
-        .fetch_one(pool)
-        .await?;
+        password: &str,
+    ) -> Result<Option<u64>, Error> {
+        let exists: Option<(u64,)> =
+            sqlx::query_as("SELECT id FROM users WHERE email = ? AND password_hash = ?")
+                .bind(user_email)
+                .bind(password)
+                .fetch_optional(pool)
+                .await?;
 
-        Ok(exists)
+        Ok(exists.map(|value| value.0))
     }
 
     /// 根据UserIdentityRepo之中的信息联合查询用户信息
@@ -76,6 +75,27 @@ impl UserRepo {
         .await?;
 
         Ok(user)
+    }
+
+    /// 插入新用户（部分）
+    pub async fn insert_part<'e, E>(pool: E, email: &str, password_hash: &str) -> Result<u64, Error>
+    where
+        E: Executor<'e, Database = MySql>,
+    {
+        let record_id = sqlx::query(
+            r#"
+        INSERT INTO users (email, password_hash, nickname) 
+        VALUES (?, ?, ?)
+        "#,
+        )
+        .bind(email)
+        .bind(password_hash)
+        .bind("用户z")
+        .execute(pool)
+        .await?
+        .last_insert_id();
+
+        Ok(record_id)
     }
 
     /// 插入新用户（返回插入后的完整用户）

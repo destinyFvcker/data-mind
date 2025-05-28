@@ -3,7 +3,6 @@
 
 use serde::Deserialize;
 
-pub mod alarm;
 pub mod news;
 pub mod serv_aindex;
 pub mod serv_astock;

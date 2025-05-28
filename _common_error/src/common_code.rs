@@ -39,7 +39,22 @@ pub enum CommonCode {
     External = 1007,
     /// noraml doesn't exist
     NotExists = 1008,
+    /// resource conflict
+    ResourceConflict = 1009,
     // ====== End of common status code ================
+
+    // ====== Begin of external integration error =======
+    /// DingTalk bot not found or invalid token.
+    DingTalkBotNotFound = 3000,
+    /// DingTalk bot disabled.
+    DingTalkBotDisabled = 3001,
+    /// DingTalk group disbanded.
+    DingTalkGroupDisbanded = 3002,
+    /// DingTalk API rate limited.
+    DingTalkRateLimited = 3003,
+    /// DingTalk system busy.
+    DingTalkSystemBusy = 3004,
+    // ====== End of external integration error =======
 
     // ====== Begin of auth related status code =====
     /// User not exist.
@@ -71,18 +86,10 @@ impl CommonCode {
             | CommonCode::Unexpected
             | CommonCode::Internal
             | CommonCode::IllegalState
-            | CommonCode::External => true,
+            | CommonCode::External
+            | CommonCode::DingTalkRateLimited => true,
 
-            CommonCode::Success
-            | CommonCode::Unsupported
-            | CommonCode::InvalidArguments
-            | CommonCode::UserNotFound
-            | CommonCode::UserPasswordMismatch
-            | CommonCode::AuthHeaderNotFound
-            | CommonCode::InvalidAuthHeader
-            | CommonCode::AccessDenied
-            | CommonCode::PermissionDenied
-            | CommonCode::NotExists => false,
+            _ => false,
         }
     }
 
@@ -103,19 +110,25 @@ impl fmt::Display for CommonCode {
 pub fn to_http_code(common_code: CommonCode) -> http::StatusCode {
     match common_code {
         CommonCode::Success => http::StatusCode::OK,
+        CommonCode::DingTalkSystemBusy => http::StatusCode::BAD_GATEWAY,
         CommonCode::Unknown
         | CommonCode::Internal
         | CommonCode::Unexpected
         | CommonCode::IllegalState => http::StatusCode::INTERNAL_SERVER_ERROR,
-        CommonCode::InvalidArguments | CommonCode::InvalidAuthHeader | CommonCode::Unsupported => {
-            http::StatusCode::BAD_REQUEST
-        }
+        CommonCode::InvalidArguments
+        | CommonCode::InvalidAuthHeader
+        | CommonCode::Unsupported
+        | CommonCode::DingTalkBotDisabled
+        | CommonCode::DingTalkBotNotFound
+        | CommonCode::DingTalkGroupDisbanded => http::StatusCode::BAD_REQUEST,
         CommonCode::External => http::StatusCode::NOT_ACCEPTABLE,
         CommonCode::NotExists => http::StatusCode::NOT_FOUND,
         CommonCode::UserPasswordMismatch
         | CommonCode::AuthHeaderNotFound
         | CommonCode::UserNotFound => http::StatusCode::UNAUTHORIZED,
         CommonCode::AccessDenied | CommonCode::PermissionDenied => http::StatusCode::FORBIDDEN,
+        CommonCode::DingTalkRateLimited => http::StatusCode::TOO_MANY_REQUESTS,
+        CommonCode::ResourceConflict => http::StatusCode::CONFLICT,
     }
 }
 

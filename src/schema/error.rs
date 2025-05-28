@@ -4,6 +4,8 @@ use common_error::{common_code::CommonCode, ext::ErrorExt};
 use common_macro::stack_trace_debug;
 use snafu::Snafu;
 
+use crate::ding_robot;
+
 use super::common::ErrRes;
 
 #[derive(Snafu)]
@@ -25,6 +27,10 @@ pub enum Error {
     // bad request
     #[snafu(display("Request param error!, related desc = {}", desc))]
     BadReq { desc: String },
+
+    // dingding error
+    #[snafu(display("sending dingding webhook error: {}", source))]
+    DingErr { source: ding_robot::error::Error },
 }
 
 impl ErrorExt for Error {
@@ -36,6 +42,7 @@ impl ErrorExt for Error {
             Error::UnAuth => common_code::CommonCode::PermissionDenied,
             Error::NotFound => common_code::CommonCode::NotExists,
             Error::BadReq { .. } => common_code::CommonCode::InvalidArguments,
+            Error::DingErr { source } => source.common_code(),
         }
     }
 
