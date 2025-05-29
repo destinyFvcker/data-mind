@@ -2,6 +2,7 @@
 
 pub mod akshare;
 pub mod common;
+pub mod coze;
 pub mod dingding;
 pub mod error;
 pub mod service;

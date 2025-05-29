@@ -63,6 +63,7 @@ async fn main() -> anyhow::Result<()> {
         .await,
     );
     let clickhouse_client = ext_res.ch_client.clone();
+    let http_client = ext_res.http_client.clone();
 
     perform_ddl(&ext_res.ch_client).await;
     scheduler::scheduler_start_up(ext_res).await?;
@@ -72,7 +73,12 @@ async fn main() -> anyhow::Result<()> {
         "0.0.0.0:{}",
         INIT_CONFIG.server.port
     )))
-    .run(get_app().data(kafka_client).data(clickhouse_client))
+    .run(
+        get_app()
+            .data(kafka_client)
+            .data(clickhouse_client)
+            .data(http_client),
+    )
     .await?;
 
     Ok(())

@@ -2,12 +2,13 @@
 use chrono::NaiveDateTime;
 use serde::{Deserialize, Serialize};
 use sqlx::{prelude::*, Error, MySql, MySqlPool};
+use utoipa::ToSchema;
 
 pub const GITHUB_PROVIDER: &'static str = "github";
 pub const WECHAT_PROVICER: &'static str = "wechat";
 
 /// 用户基本信息表
-#[derive(Debug, FromRow, Serialize, Deserialize)]
+#[derive(Debug, FromRow, Serialize, Deserialize, ToSchema)]
 pub struct UserRepo {
     pub id: u64,                              // BIGINT UNSIGNED
     pub email: String,                        // VARCHAR(100)
@@ -32,11 +33,13 @@ pub struct UserIdentityRepo {
 
 impl UserRepo {
     /// 根据ID查找用户
-    pub async fn find_by_id(pool: &MySqlPool, user_id: u64) -> Result<Option<Self>, Error> {
-        sqlx::query_as::<_, Self>("SELECT * FROM users WHERE id = ?")
+    pub async fn find_by_id(pool: &MySqlPool, user_id: u64) -> anyhow::Result<Option<Self>> {
+        let user_repo = sqlx::query_as::<_, Self>("SELECT * FROM users WHERE id = ?")
             .bind(user_id)
             .fetch_optional(pool)
-            .await
+            .await?;
+
+        Ok(user_repo)
     }
 
     /// 通过邮箱密码验证该用户是否存在
@@ -84,13 +87,14 @@ impl UserRepo {
     {
         let record_id = sqlx::query(
             r#"
-        INSERT INTO users (email, password_hash, nickname) 
-        VALUES (?, ?, ?)
+        INSERT INTO users (email, password_hash, nickname, avatar_url) 
+        VALUES (?, ?, ?, ?)
         "#,
         )
         .bind(email)
         .bind(password_hash)
         .bind("用户z")
+        .bind("https://sm.ms/image/5WCKgdOnqLlSMa6.jpg")
         .execute(pool)
         .await?
         .last_insert_id();

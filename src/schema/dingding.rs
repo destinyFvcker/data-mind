@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Deserialize)]
 pub struct DingTalkRobotRes {
-    pub errcode: String,
+    pub errcode: i32,
     pub errmsg: String,
 }
 

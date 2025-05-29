@@ -99,7 +99,7 @@ pub async fn ding_ping(
     });
     let body_bytes = serde_json::to_string(&body).unwrap();
 
-    let res: DingTalkRobotRes = reqwest_client
+    let res = reqwest_client
         .post(hook_addr)
         .body(body_bytes)
         .header(

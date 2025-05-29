@@ -12,8 +12,8 @@ impl UserConfigShow {
         let user_config = sqlx::query_as::<_, Self>(
             r#"
         SELECT 
-            u.nickname,
-            dr.webhook_address
+            dr.webhook_address as ding_webhook_addr,
+            u.nickname as nick_name
         FROM users u
         LEFT JOIN dingtalk_robots dr
             on u.id = dr.user_id
@@ -138,8 +138,8 @@ SELECT EXISTS(
 ) AS password_correct;
     "#,
     )
-    .bind(password)
     .bind(user_id)
+    .bind(password)
     .fetch_one(mysql_client)
     .await?;
 
@@ -147,3 +147,19 @@ SELECT EXISTS(
 }
 
 // FIXME 这里处理的实际上并不是很好，应为无法区分用户是否存在的状况
+
+#[cfg(test)]
+mod test {
+    use data_mind::utils::get_test_mysql_pool;
+
+    use crate::repository::user_config_repo::check_password_right;
+
+    #[actix_web::test]
+    async fn test_check_password_right() {
+        let mysql_client = get_test_mysql_pool().await;
+        let result = check_password_right(&mysql_client, 18, "12345678")
+            .await
+            .unwrap();
+        assert!(result);
+    }
+}

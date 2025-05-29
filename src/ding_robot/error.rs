@@ -50,13 +50,13 @@ impl ErrorExt for Error {
 
 impl Error {
     pub fn from_error_res(err_res: DingTalkRobotRes) -> Option<Self> {
-        match err_res.errcode.as_str() {
-            "0" => None,
-            "-1" => Some(Self::SystemBusy),
-            "400013" => Some(Self::GroupDisbanded),
-            "400102" => Some(Self::BotDisabled),
-            "400106" => Some(Self::BotNotFound),
-            "410100" => Some(Self::RateLimited),
+        match err_res.errcode {
+            0 => None,
+            -1 => Some(Self::SystemBusy),
+            400013 => Some(Self::GroupDisbanded),
+            400102 => Some(Self::BotDisabled),
+            400106 => Some(Self::BotNotFound),
+            410100 => Some(Self::RateLimited),
             _ => Some(Self::Other {
                 reason: err_res.errmsg,
             }),

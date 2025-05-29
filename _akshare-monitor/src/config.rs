@@ -37,11 +37,20 @@ pub struct KafkaConfig {
     pub partition: i32,
 }
 
+/// 关于Coze平台的相关配置
+#[derive(Debug, Deserialize)]
+pub struct Coze {
+    /// Coze API通过令牌进行API请求的鉴权
+    pub token: String,
+    pub botid: String,
+}
+
 #[derive(Debug, Deserialize)]
 pub struct InitConfig {
     pub server: ServerConfig,
     pub clickhouse: ClickhouseConfig,
     pub kafka: KafkaConfig,
+    pub coze: Coze,
 }
 
 impl InitConfig {
@@ -56,6 +65,11 @@ impl InitConfig {
             )
             .add_source(
                 Environment::with_prefix("server")
+                    .keep_prefix(true)
+                    .separator("_"),
+            )
+            .add_source(
+                Environment::with_prefix("coze")
                     .keep_prefix(true)
                     .separator("_"),
             )

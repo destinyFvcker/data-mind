@@ -106,7 +106,7 @@ async fn main() {
             .configure(handler::quant_data::config())
             .configure(handler::manage::config());
 
-        app = if local_dev != "1" {
+        app = if local_dev != "-1" {
             app.service(api_scope.wrap(JwtAuthGuard::new(shared_config.jwt_secret_key.clone())))
         } else {
             app.service(api_scope)

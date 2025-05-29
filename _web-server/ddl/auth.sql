@@ -1,12 +1,12 @@
 -- 用户基本信息表
 CREATE TABLE IF NOT EXISTS users (
     id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-    email VARCHAR(100) UNIQUE,
-    password_hash VARCHAR(255),  -- TODO 本地注册的密码哈希（第三方登录可为空）
+    email VARCHAR(100) UNIQUE NOT NULL,
+    password_hash VARCHAR(255) NOT NULL,  -- TODO 本地注册的密码哈希（第三方登录可为空）
     mobile VARCHAR(20) NULL DEFAULT NULL,
     
     nickname VARCHAR(50) NOT NULL,
-    avatar_url VARCHAR(255),
+    avatar_url VARCHAR(255) NOT NULL,
 
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,

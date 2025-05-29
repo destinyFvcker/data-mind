@@ -19,7 +19,10 @@ use utoipa_actix_web::{scope, service_config::ServiceConfig};
 
 use crate::{
     handler::auth::jwt_mw::UserIdFromJwt,
-    repository::user_config_repo::{self, DingTalkRebotConfigRepo},
+    repository::{
+        auth_repo::UserRepo,
+        user_config_repo::{self, DingTalkRebotConfigRepo},
+    },
     schema::user_config::UserConfigShow,
 };
 
@@ -32,6 +35,7 @@ pub fn config() -> impl FnOnce(&mut ServiceConfig) {
         config.service(
             scope("/manage")
                 .service(get_user_config_info)
+                .service(get_user_basic_info)
                 .service(hook_ding_test_msg)
                 .service(update_user_password)
                 .service(update_user_nickname)
@@ -44,7 +48,7 @@ pub fn config() -> impl FnOnce(&mut ServiceConfig) {
 #[utoipa::path(
     tag = API_TAG,
     responses(
-        (status = 200, description = "获取用户可配置信息成功 ✅", body = EmptyOkRes),
+        (status = 200, description = "获取用户可配置信息成功 ✅", body = OkRes<UserConfigShow>),
         (status = 500, description = "请求出现错误 💥", body = OrdinError),
         (status = 401, description = "没有权限访问对应资源 🚫", body = OrdinError),
         (status = 404, description = "系统不存在此用户", body = OrdinError) 
@@ -62,6 +66,31 @@ async fn get_user_config_info(
 
     let res = OkRes::from_with_msg("成功获取用户可配置信息".to_string(), user_config_show);
     Ok(Json(res))
+}
+
+#[utoipa::path(
+    tag = API_TAG,
+    responses(
+        (status = 200, description = "获取用户基本信息成功 ✅", body = OkRes<UserRepo>),
+        (status = 500, description = "请求出现错误 💥", body = OrdinError),
+        (status = 401, description = "没有权限访问对应资源 🚫", body = OrdinError),
+        (status = 404, description = "系统不存在此用户", body = OrdinError) 
+    )
+)]
+#[get("/user_info")]
+async fn get_user_basic_info(
+    mysql_client: Data<MySqlPool>,
+    user_id: ReqData<UserIdFromJwt>,
+) -> Result<Json<OkRes<UserRepo>>, OrdinError> {
+    let user_info = UserRepo::find_by_id(&mysql_client, user_id.0)
+        .await
+        .context(InternalServerSnafu)?
+        .ok_or(NotFoundSnafu.build())?;
+
+    Ok(Json(OkRes::from_with_msg(
+        "获取用户基本信息成功 ✔".to_owned(),
+        user_info,
+    )))
 }
 
 /// 向钉钉报警机器人发送测试信息
@@ -83,8 +112,7 @@ async fn hook_ding_test_msg(
     let ding_config_repo = DingTalkRebotConfigRepo::fetch_with_user_id(&mysql_client, user_id.0)
         .await
         .context(InternalServerSnafu)?
-        .ok_or(())
-        .map_err(|_| NotFoundSnafu.build())?;
+        .ok_or(NotFoundSnafu.build())?;
 
     let ding_config: DingTalkRobotReq = ding_config_repo.try_into().map_err(|_| {
         BadReqSnafu {
@@ -110,6 +138,15 @@ struct UpdateMsgBody {
     value: String,
 }
 
+/// 更新密码请求体
+#[derive(Debug, ToSchema, Deserialize)]
+struct UpdatePasswordBody {
+    /// 旧密码
+    old_password: String,
+    /// 新密码
+    new_password: String,
+}
+
 /// 更新用户密码
 #[utoipa::path(
     tag = API_TAG,
@@ -123,10 +160,10 @@ struct UpdateMsgBody {
 #[post("/update_pwd")]
 async fn update_user_password(
     mysql_client: Data<MySqlPool>,
-    body: Json<UpdateMsgBody>,
+    body: Json<UpdatePasswordBody>,
     user_id: ReqData<UserIdFromJwt>,
 ) -> Result<Json<EmptyOkRes>, OrdinError> {
-    user_config_repo::check_password_right(&mysql_client, user_id.0, &body.value)
+    user_config_repo::check_password_right(&mysql_client, user_id.0, &body.old_password)
         .await
         .context(InternalServerSnafu)?
         .then_some(())
@@ -137,7 +174,7 @@ async fn update_user_password(
             .build(),
         )?;
 
-    user_config_repo::update_user_password(&mysql_client, user_id.0, &body.value)
+    user_config_repo::update_user_password(&mysql_client, user_id.0, &body.new_password)
         .await
         .context(InternalServerSnafu)?;
 
