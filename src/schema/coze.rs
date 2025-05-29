@@ -1,9 +1,10 @@
 //! Coze API相关数据实体定义
 
 use serde::{Deserialize, Serialize};
+use utoipa::ToSchema;
 
 /// 向智能体提供的表格描述
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
 pub struct AgentTableDesc {
     /// 表名
     pub table_name: String,
@@ -12,7 +13,7 @@ pub struct AgentTableDesc {
 }
 
 /// 智能体提示词
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
 pub struct AgentDesc {
     pub admin_input: String,
     pub available_table_ddls: Vec<AgentTableDesc>,

@@ -34,12 +34,12 @@ use super::{TRADE_TIME_CRON, in_trade_time};
 
 /// 模块顶级方法，用于暴露给父模块调用将相关调度任务加入到全局调度器之中
 pub(super) async fn start_a_stock_tasks(ext_res: ExternalResource) {
-    // let realtime_stock_monitor = RealTimeStockMonitor {
-    //     data_url: with_base_url("/stock_zh_a_spot_em"),
-    //     data_table: "astock_realtime_data".to_owned(),
-    //     ext_res: ext_res.clone(),
-    // };
-    // SCHEDULE_TASK_MANAGER.add_task(realtime_stock_monitor).await;
+    let realtime_stock_monitor = RealTimeStockMonitor {
+        data_url: with_base_url("/stock_zh_a_spot_em"),
+        data_table: "astock_realtime_data".to_owned(),
+        ext_res: ext_res.clone(),
+    };
+    SCHEDULE_TASK_MANAGER.add_task(realtime_stock_monitor).await;
 
     let stock_zh_a_hist_monitor = StockZhAHistMonitor {
         data_url: with_base_url("/stock_zh_a_hist"),

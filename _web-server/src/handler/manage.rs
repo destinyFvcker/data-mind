@@ -8,6 +8,7 @@ use data_mind::{
     ding_robot::msg_client::DingTalkRobotReq,
     schema::{
         common::{EmptyOkRes, OkRes},
+        coze::AgentDesc,
         error::{BadReqSnafu, DingErrSnafu, InternalServerSnafu, NotFoundSnafu, OrdinError},
     },
 };
@@ -34,6 +35,7 @@ pub fn config() -> impl FnOnce(&mut ServiceConfig) {
     |config: &mut ServiceConfig| {
         config.service(
             scope("/manage")
+                .service(coze_sql_gen)
                 .service(get_user_config_info)
                 .service(get_user_basic_info)
                 .service(hook_ding_test_msg)
@@ -42,6 +44,19 @@ pub fn config() -> impl FnOnce(&mut ServiceConfig) {
                 .service(update_ding_robot),
         );
     }
+}
+
+/// 通过调用Coze工作流api生成监控sql
+#[utoipa::path(
+    tag = API_TAG,
+    responses(
+        (status = 200, description = "获取智能体产生sql成功✅", body = OkRes<UserConfigShow>),
+        (status = 500, description = "请求出现错误 💥", body = OrdinError),
+    )
+)]
+#[post("/coze_sql_gen")]
+async fn coze_sql_gen(Json(sql_desc): Json<AgentDesc>) -> Result<Json<OkRes<String>>, OrdinError> {
+    todo!()
 }
 
 /// 获取前端可展示的用户可配置信息

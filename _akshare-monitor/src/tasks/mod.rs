@@ -10,6 +10,7 @@ use reqwest::ClientBuilder;
 use crate::{
     init::ExternalResource,
     scheduler::{CST, SCHEDULE_TASK_MANAGER},
+    tasks::s_impls::{SchedHeartBeat, SchedWaitZombie},
 };
 
 mod a_index;
@@ -61,6 +62,9 @@ pub async fn start_up_monitor_tasks(ext_res: ExternalResource) {
     SCHEDULE_TASK_MANAGER
         .add_task(clean_up::CleanUp::new(ext_res.ch_client.clone()))
         .await;
+    // 加入心跳检测任务和清除zombie task任务
+    SCHEDULE_TASK_MANAGER.add_task(SchedHeartBeat).await;
+    SCHEDULE_TASK_MANAGER.add_task(SchedWaitZombie).await;
 
     a_stock::start_a_stock_tasks(ext_res.clone()).await;
     a_index::start_a_index_tasks(ext_res.clone()).await;

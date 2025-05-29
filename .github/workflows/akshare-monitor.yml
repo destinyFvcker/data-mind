@@ -62,11 +62,13 @@ jobs:
               env:
                   CLICKHOUSE_USER: ${{ secrets.MONITOR_CH_USER }}
                   CLICKHOUSE_PASSWORD: ${{ secrets.AK_SHARE_WRITER_PASSWORD }}
+                  COZE_TOKEN: ${{ secrets.COZE_TOKEN }}
+                  COZE_BOTID: ${{ secrets.COZE_BOTID }}
               with:
                   host: ${{ secrets.ALIYUN_HOST }}
                   username: ${{ secrets.ALIYUN_USER }}
                   key: ${{ secrets.ALIYUN_SSH_KEY }}
-                  envs: BASE_PATH,APP_NAME,CLICKHOUSE_USER,CLICKHOUSE_PASSWORD
+                  envs: BASE_PATH,APP_NAME,CLICKHOUSE_USER,CLICKHOUSE_PASSWORD,COZE_TOKEN,COZE_BOTID
                   # 设置环境变量并执行脚本
                   script: |
                       cd ${BASE_PATH}${APP_NAME}
