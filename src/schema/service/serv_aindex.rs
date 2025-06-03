@@ -100,3 +100,14 @@ pub struct StockZhIndexDailyPagin {
     /// 涨跌额(%)
     pub change_amount: f64,
 }
+
+/// 指数基本信息
+#[derive(Debug, Deserialize, Serialize, Row, ToSchema)]
+pub struct IndexBasicInfo {
+    /// 指数代码
+    pub index_code: String,
+    /// 指数名称
+    pub display_name: String,
+    /// 发布时间
+    pub publish_date: String,
+}

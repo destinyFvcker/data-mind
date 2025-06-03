@@ -87,9 +87,12 @@ where
         };
 
         let Ok(jwt) = jwt else {
+            // println!("error! jwt decode");
             return Box::pin(async { common_err_res!(InvalidCredentialSnafu.build()) });
         };
+        // println!("jwt = {jwt}");
         if !jwt.starts_with("Bearer ") {
+            // println!("error! jwt start with");
             return Box::pin(async { common_err_res!(InvalidCredentialSnafu.build()) });
         }
 

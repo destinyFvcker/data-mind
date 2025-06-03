@@ -1,7 +1,7 @@
 use actix_web::{
     body::BoxBody,
     http::header::{self, TryIntoHeaderValue},
-    web::BytesMut,
+    web::{BytesMut, Json},
     HttpResponse, ResponseError,
 };
 use common_error::{common_code::to_http_code, ext::ErrorExt};
@@ -110,4 +110,26 @@ impl<E: ErrorExt> ResponseError for ErrRes<E> {
 
         res.set_body(BoxBody::new(buf))
     }
+}
+
+// FIXME 实现错误快速抛出，实际上并没有什么卵用，因为?只能用在返回Result的函数上
+impl<E: ErrorExt, T, L> From<ErrRes<E>>
+    for actix_web::Either<L, std::result::Result<Json<OkRes<T>>, ErrRes<E>>>
+where
+    T: Serialize + Debug + ToSchema,
+{
+    fn from(err: ErrRes<E>) -> Self {
+        actix_web::Either::Right(Err(err))
+    }
+}
+
+// FIXME 使用这个宏出现的错误会出现在定义这个宏的地方，而不是使用这个宏的地方
+#[macro_export]
+macro_rules! try_or_either {
+    ($expr:expr) => {
+        match $expr {
+            Ok(val) => val,
+            Err(err) => return actix_web::Either::Right(Err(err.into())),
+        }
+    };
 }

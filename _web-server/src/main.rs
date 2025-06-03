@@ -64,7 +64,8 @@ async fn main() {
             (name = indicator::API_TAG, description = indicator::API_DESC),
             (name = news::API_TAG, description = news::API_DESC),
             (name = a_stock::API_TAG, description = a_stock::API_DESC),
-            (name = manage::API_TAG, description = manage::API_DESC)
+            (name = manage::API_TAG, description = manage::API_DESC),
+            (name = coze::API_TAG, description = coze::API_DESC)
         ),
         servers(
             (url = "http://localhost:8800", description = "本地测试环境"),
@@ -104,13 +105,14 @@ async fn main() {
 
         let api_scope = utoipa_actix_web::scope("/api")
             .configure(handler::quant_data::config())
-            .configure(handler::manage::config());
+            .configure(handler::manage::config())
+            .configure(handler::coze::config());
 
-        app = if local_dev != "-1" {
-            app.service(api_scope.wrap(JwtAuthGuard::new(shared_config.jwt_secret_key.clone())))
-        } else {
-            app.service(api_scope)
-        };
+        // app = if local_dev != "1" {
+        app = app.service(api_scope.wrap(JwtAuthGuard::new(shared_config.jwt_secret_key.clone())));
+        // } else {
+        // app.service(api_scope)
+        // };
 
         let mut app = app
             .service(

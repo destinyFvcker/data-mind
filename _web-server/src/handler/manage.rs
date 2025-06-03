@@ -8,7 +8,6 @@ use data_mind::{
     ding_robot::msg_client::DingTalkRobotReq,
     schema::{
         common::{EmptyOkRes, OkRes},
-        coze::AgentDesc,
         error::{BadReqSnafu, DingErrSnafu, InternalServerSnafu, NotFoundSnafu, OrdinError},
     },
 };
@@ -35,7 +34,7 @@ pub fn config() -> impl FnOnce(&mut ServiceConfig) {
     |config: &mut ServiceConfig| {
         config.service(
             scope("/manage")
-                .service(coze_sql_gen)
+                // .service(coze_sql_gen)
                 .service(get_user_config_info)
                 .service(get_user_basic_info)
                 .service(hook_ding_test_msg)
@@ -46,18 +45,18 @@ pub fn config() -> impl FnOnce(&mut ServiceConfig) {
     }
 }
 
-/// 通过调用Coze工作流api生成监控sql
-#[utoipa::path(
-    tag = API_TAG,
-    responses(
-        (status = 200, description = "获取智能体产生sql成功✅", body = OkRes<UserConfigShow>),
-        (status = 500, description = "请求出现错误 💥", body = OrdinError),
-    )
-)]
-#[post("/coze_sql_gen")]
-async fn coze_sql_gen(Json(sql_desc): Json<AgentDesc>) -> Result<Json<OkRes<String>>, OrdinError> {
-    todo!()
-}
+// 通过调用Coze工作流api生成监控sql
+// #[utoipa::path(
+//     tag = API_TAG,
+//     responses(
+//         (status = 200, description = "获取智能体产生sql成功✅", body = OkRes<UserConfigShow>),
+//         (status = 500, description = "请求出现错误 💥", body = OrdinError),
+//     )
+// )]
+// #[post("/coze_sql_gen")]
+// async fn coze_sql_gen(Json(sql_desc): Json<AgentDesc>) -> Result<Json<OkRes<String>>, OrdinError> {
+//     todo!()
+// }
 
 /// 获取前端可展示的用户可配置信息
 #[utoipa::path(
@@ -74,6 +73,7 @@ async fn get_user_config_info(
     mysql_client: Data<MySqlPool>,
     user_id: ReqData<UserIdFromJwt>,
 ) -> Result<Json<OkRes<UserConfigShow>>, OrdinError> {
+    // println!("user_id = {:?}", user_id);
     let user_config_show = UserConfigShow::fetch_with_user_id(&mysql_client, user_id.0)
         .await
         .context(InternalServerSnafu)?
@@ -97,6 +97,7 @@ async fn get_user_basic_info(
     mysql_client: Data<MySqlPool>,
     user_id: ReqData<UserIdFromJwt>,
 ) -> Result<Json<OkRes<UserRepo>>, OrdinError> {
+    // println!("user_id = {} in /user_info", user_id.0);
     let user_info = UserRepo::find_by_id(&mysql_client, user_id.0)
         .await
         .context(InternalServerSnafu)?

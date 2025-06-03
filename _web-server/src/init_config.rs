@@ -15,6 +15,7 @@ struct Args {
 pub struct InitConfig {
     pub server: ServerConfig,
     pub mysql: MysqlConfig,
+    pub coze: CozeConfig,
     pub clickhouse: ClickhouseConfig,
     pub jwt_secret_key: String,
     pub github: GithubConfig,
@@ -25,6 +26,18 @@ pub struct ServerConfig {
     pub port: u16,
     pub fe: String,
     pub logdir: String,
+    pub deploy_path: String,
+}
+
+/// Coze平台智能体的相关配置
+#[derive(Debug, Deserialize)]
+pub struct CozeConfig {
+    /// Coze应用id
+    pub id: String,
+    /// Coze OAuth应用的公钥指纹
+    pub kid: String,
+    /// Coze OAuth应用的私钥签名
+    pub signingkey: String,
 }
 
 #[derive(Debug, Deserialize)]
@@ -70,6 +83,11 @@ impl InitConfig {
             )
             .add_source(
                 Environment::with_prefix("server")
+                    .keep_prefix(true)
+                    .separator("_"),
+            )
+            .add_source(
+                Environment::with_prefix("coze")
                     .keep_prefix(true)
                     .separator("_"),
             )

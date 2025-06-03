@@ -1,9 +1,8 @@
 use std::{fs::File, io::Write, sync::LazyLock, time::Duration};
 
 use data_mind::schema::akshare::{
-    AkIndexStockInfo, AkStockFinancialAbstractThs, AkStockNewsEm, AkStockRankCxdThs,
-    AkStockRankCxflThs, AkStockRankCxgThs, AkStockRankCxslThs, AkStockRankLxszThs,
-    AkStockRankLxxdThs, AkStockZhAStEm,
+    AkIndexStockInfo, AkStockNewsEm, AkStockRankCxdThs, AkStockRankCxflThs, AkStockRankCxgThs,
+    AkStockRankCxslThs, AkStockRankLxszThs, AkStockRankLxxdThs, AkStockZhAStEm,
 };
 use reqwest::{Client, ClientBuilder};
 use serde_json::Value;
@@ -27,9 +26,9 @@ async fn test_stock_financial_abstract_ths() {
     let indicators = ["按报告期", "按年度", "按单季度"];
 
     for indicator in indicators {
-        let res: Vec<AkStockFinancialAbstractThs> = TEST_HTTP_CLIENT
+        let res: Vec<Value> = TEST_HTTP_CLIENT
             .get(with_base_url("/stock_financial_abstract_ths"))
-            .query(&[("symbol", "000063"), ("indicator", indicator)])
+            .query(&[("symbol", "000001"), ("indicator", indicator)])
             .send()
             .await
             .unwrap()

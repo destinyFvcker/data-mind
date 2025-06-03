@@ -1,7 +1,14 @@
 [server]
 fe = "/home/destinyfvcker/projects/data-mind/fe"
 port = 8800
+deploy_path = "https://www.destinyfvcker.com/data-mind"
+# deploy_path = "http://localhost:5173/data-mind"
 # fe = "/Users/zilu/dev/fe-dev/projects/datamind-fe/build"
+
+[coze]
+# id = ? (in env)
+# kid = ? (in env)
+# signingkey = ? (in env)
 
 [clickhouse]
 host = "127.0.0.1"

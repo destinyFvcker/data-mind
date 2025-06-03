@@ -2,6 +2,7 @@
 
 use std::{collections::HashSet, sync::Arc, time::Duration};
 
+use actix_web::HttpResponse;
 use backoff::ExponentialBackoff;
 use chrono::DateTime;
 use rskafka::{
@@ -213,6 +214,23 @@ pub fn get_exchange_prefix<'a, 'b>(stock_code: &'a str) -> Option<&'b str> {
         "83" | "87" => Some("BJ"),
         _ => None,
     }
+}
+
+/// 放回一个设置好对应响应头的重定向响应
+#[inline]
+pub fn redirect_resp(target_url: &str) -> actix_web::HttpResponse {
+    use actix_web::http::header;
+    HttpResponse::Found()
+        .insert_header((header::LOCATION, target_url))
+        .insert_header((
+            header::CACHE_CONTROL,
+            "no-store, no-cache, must-revalidate, private",
+        ))
+        .insert_header((header::PRAGMA, "no-cache"))
+        .insert_header((header::EXPIRES, "0"))
+        .insert_header((header::REFERRER_POLICY, "no-referrer"))
+        .insert_header(("x-robots-tag", "noindex, nofollow"))
+        .finish()
 }
 
 #[cfg(test)]

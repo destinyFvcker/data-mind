@@ -247,6 +247,29 @@ ORDER BY code ASC
 
 // ---------------------------------------------------------------------------------
 
+impl serv_aindex::IndexBasicInfo {
+    pub async fn fetch_with_id(
+        ch_client: &clickhouse::Client,
+        index_code: &str,
+    ) -> anyhow::Result<Option<Self>> {
+        let sql = r#"
+SELECT  
+    index_code,
+    display_name,
+    publish_date
+FROM index_stock_info
+WHERE index_code = ?
+        "#;
+
+        let data = ch_client
+            .query(sql)
+            .bind(index_code)
+            .fetch_optional()
+            .await?;
+        Ok(data)
+    }
+}
+
 #[cfg(test)]
 mod test {
     use super::*;

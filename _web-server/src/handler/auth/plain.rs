@@ -24,7 +24,11 @@ use crate::{
 use super::error::AuthError;
 
 pub(super) fn mount_plain_auth_scope(config: &mut ServiceConfig) {
-    config.service(scope("/plain_auth").service(plain_sign_in).service(plain_sign_up));
+    config.service(
+        scope("/plain_auth")
+            .service(plain_sign_in)
+            .service(plain_sign_up),
+    );
 }
 
 /// 注册/登录data-mind账号请求体结构
@@ -87,7 +91,7 @@ async fn plain_sign_up(
     tag = super::API_TAG,
     responses(
         (
-            status = 200, 
+            status = 200,
             description = "empty body with jwt token in the header",
             headers(
                 ("Authorization" = String, description = "New jwt token")
@@ -124,7 +128,7 @@ async fn plain_sign_in(
 
     // 创建响应并添加自定义头部
     Ok(HttpResponse::Ok()
-        .append_header(("Authorization", format!("Bearer {}", jwt)))
+        .append_header(("Authorization", jwt))
         // .append_header(("X-User-ID", user_id.to_string()))
         .json(EmptyOkRes::from_msg("登录成功 🚀".to_owned()))) // 假设你有一个默认实现
 }

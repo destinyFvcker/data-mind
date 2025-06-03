@@ -21,6 +21,7 @@ pub const API_DESC: &'static str = "一组用于获取A股指数相关金融交�
 pub fn mount_aindex_scope(config: &mut ServiceConfig) {
     config.service(
         scope("/aindex")
+            .service(index_basic_info)
             .service(index_option_50etf_qvix_kline)
             .service(index_option_50etf_qvix_mas)
             .service(stock_zh_index_daily_kline)
@@ -28,6 +29,32 @@ pub fn mount_aindex_scope(config: &mut ServiceConfig) {
             .service(stock_zh_index_daily_volume)
             .service(stock_zh_index_daily_pagin),
     );
+}
+
+#[utoipa::path(
+    tag = API_TAG,
+    params(
+        ("index_code", description = "需要获取基本信息的指数代码")
+    ),
+    responses(
+        (status = 200, description = "成功获取指数基本信息", body = OkRes<serv_aindex::IndexBasicInfo>),
+        (status = 404, description = "对应指数基本信息不存在", body = OrdinError),
+        (status = 401, description = "没有访问权限", body = OrdinError),
+        (status = 500, description = "发生服务器内部错误", body = OrdinError),
+    )
+)]
+#[get("/basic_info/{index_code}")]
+async fn index_basic_info(
+    index_code: web::Path<String>,
+    ch_client: web::Data<clickhouse::Client>,
+) -> Result<Json<OkRes<serv_aindex::IndexBasicInfo>>, OrdinError> {
+    let data = serv_aindex::IndexBasicInfo::fetch_with_id(&ch_client, &index_code)
+        .await
+        .context(InternalServerSnafu)?
+        .ok_or(NotFoundSnafu.build())?;
+
+    let res = OkRes::from_with_msg("成功获取指数基本信息".to_owned(), data);
+    Ok(Json(res))
 }
 
 /// 普通限定请求体
