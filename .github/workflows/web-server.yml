@@ -70,11 +70,14 @@ jobs:
                   MYSQL_PASSWORD: ${{ secrets.MYSQL_ROOT_PASSWORD }}
                   JWT_SECRET_KEY: ${{ secrets.JWT_SECRET_KEY }}
                   GITHUB_SECRET: ${{ secrets.MY_GITHUB_SECRET }}
+                  COZE_ID: ${{ secrets.COZE_ID }}
+                  COZE_KID: ${{ secrets.COZE_KID }}
+                  COZE_SIGNINGKEY: ${{ secrets.COZE_SIGNINGKEY }}
               with:
                   host: ${{ secrets.ALIYUN_HOST }}
                   username: ${{ secrets.ALIYUN_USER }}
                   key: ${{ secrets.ALIYUN_SSH_KEY }}
-                  envs: BASE_PATH,APP_NAME,CLICKHOUSE_USER,CLICKHOUSE_PASSWORD,MYSQL_USER,MYSQL_PASSWORD,JWT_SECRET_KEY,GITHUB_SECRET
+                  envs: BASE_PATH,APP_NAME,CLICKHOUSE_USER,CLICKHOUSE_PASSWORD,MYSQL_USER,MYSQL_PASSWORD,JWT_SECRET_KEY,GITHUB_SECRET,COZE_ID,COZE_KID,COZE_SIGNINGKEY
                   # 设置环境变量并执行脚本
                   script: |
                       cd ${BASE_PATH}${APP_NAME}
